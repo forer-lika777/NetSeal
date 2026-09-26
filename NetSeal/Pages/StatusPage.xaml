@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="NetSeal.Pages.StatusPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:NetSeal.Pages"
+    xmlns:models="using:NetSeal.Models"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollView>
+        <Grid Margin="60" ColumnSpacing="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0" >
+                <ListView ItemsSource="{x:Bind ViewModel.Interfaces, Mode=OneWay}"
+                          SelectedIndex="{x:Bind ViewModel.SelectedInterfaceIndex, Mode=TwoWay}"
+                          Visibility="{x:Bind ViewModel.HasAvailableInterfaces, Converter={StaticResource BoolToVisibilityConverter}}"
+                          SelectionMode="Single" Height="700" VerticalAlignment="Stretch">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:InterfaceNameDisplayStatus">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Name}"/>
+                                <TextBlock Grid.Column="1" Text="已选连接" Visibility="{x:Bind Selected, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock Text="未找到可用网络连接" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{x:Bind ViewModel.HasAvailableInterfaces, Converter={StaticResource BoolToReversedVisibilityConverter}}"/>
+            </Grid>
+            <StackPanel Grid.Column="1" Spacing="20">
+                <TextBlock>
+                    <Run>已选网络：</Run>
+                    <Run Text="{x:Bind ViewModel.SelectedInterfaceName, Mode=OneWay}"/>
+                </TextBlock>
+                <TextBox Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <PasswordBox Password="{x:Bind ViewModel.Password, Mode=TwoWay}"/>
+                <Button Content="连接" Command="{x:Bind ViewModel.ConnectCommand}"/>
+                <Button Content="终止连接" Command="{x:Bind ViewModel.DisConnectCommand}"/>
+                <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}"/>
+            </StackPanel>
+        </Grid>
+    </ScrollView>
+    
+</Page>

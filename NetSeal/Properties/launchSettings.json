@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "NetSeal (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NetSeal (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
