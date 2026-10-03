@@ -89,6 +89,7 @@ public partial class App : Application
     {
         CreateTaskBarIcon();
         ShowWindow();
+        Services.GetRequiredService<StatusPageModel>();
     }
 
     private void CreateTaskBarIcon()
