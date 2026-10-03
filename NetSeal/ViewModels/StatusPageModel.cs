@@ -1,50 +1,117 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Win32;
 using NetSeal.Models;
 using NetSeal.Services;
+using NetSeal.Services.Network;
+using NetSeal.Services.Ras;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Formats.Tar;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Windows.Devices.PointOfService;
+using Windows.Media.DialProtocol;
+using Windows.Networking.Connectivity;
 using Windows.System;
 
 namespace NetSeal.ViewModels;
 
 public partial class StatusPageModel : ObservableObject
 {
+    private const string ENTRY_NAME = "NetSeal Connection";
     private readonly IAppSettings appSettings;
+    private readonly IUiDispatcher dispatcher;
 
-    private IntPtr? connectPtr = null;
+    private DateTime lastHandled = DateTime.MinValue;
+    private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
+    private readonly Lock locker = new();
+
+    private CancellationTokenSource? connectCts = null;
+
+    private bool initialized = false;
+
+    public StatusPageModel(IAppSettings appSettings, IUiDispatcher dispatcher)
+    {
+        this.appSettings = appSettings;
+        this.dispatcher = dispatcher;
+        _ = InitializeAsync();
+    }
 
     [ObservableProperty]
-    public partial ObservableCollection<InterfaceNameDisplayStatus> Interfaces { get; set; } = [];
+    public partial ObservableCollection<NetworkNameDisplayStatus> NetworkConnections { get; set; } = [];
+
+    [ObservableProperty]
+    public partial bool IsEthernetNetworkInterfaceConnected { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsOtherNetworkInterfaceConnected { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsInternetAccess { get; set; } = false;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial bool HasAvailableInterfaces { get; set; } = false;
+    public partial bool HasAvailableConnections { get; set; } = false;
 
     [ObservableProperty]
-    public partial string SelectedInterfaceName { get; set; } = string.Empty;
+    public partial bool PppoeConnectionManagedByOutside { get; set; } = false;
 
     [ObservableProperty]
-    public partial int SelectedInterfaceIndex { get; set; } = -1;
+    public partial string ActivePppoeConnectionEntryName { get; set; } = string.Empty;
 
-    partial void OnSelectedInterfaceIndexChanged(int value)
+    [ObservableProperty]
+    public partial string SelectedConnectionName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    public partial int SelectedConnectionIndex { get; set; } = -1;
+
+    async partial void OnSelectedConnectionIndexChanged(int oldValue, int newValue)
     {
-        if (value >= 0)
-            SelectedInterfaceName = Interfaces[(int)value].Name;
+        if (newValue < 0)
+            return;
+
+        if (!string.IsNullOrEmpty(SelectedConnectionName))
+        {
+            var tcs = new TaskCompletionSource();
+            StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
+
+            try
+            {
+                await tcs.Task.WaitAsync(CancellationToken.None);
+            }
+            catch (OperationCanceledException)
+            {
+                SelectedConnectionIndex = oldValue;
+                return;
+            }
+        }
+
+        SelectedConnectionName = NetworkConnections[(int)newValue].Name;
     }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
     public partial bool IsConnected { get; set; } = false;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
     public partial bool IsConnecting { get; set; } = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
+    public partial bool IsLoading { get; set; } = false;
 
     [ObservableProperty]
     public partial string DisplayMessage { get; set; } = string.Empty;
@@ -57,147 +124,194 @@ public partial class StatusPageModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     public partial string Password { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial bool EthernetCablePluggedIn { get; set; } = 
-        NetworkInterface.GetAllNetworkInterfaces()
-        .Where(n => n.NetworkInterfaceType == NetworkInterfaceType.Ethernet)
-        .Any(n =>
-        {
-            var desc = n.Description;
-            // 排除虚拟/蓝牙
-            if (desc.Contains("Radmin", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("VPN", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("Virtual", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("VMware", StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (desc.Contains("VirtualBox", StringComparison.OrdinalIgnoreCase))
-                return false;
+    public static IEnumerable<NetworkConnection> GetAllNics()
+    {
+        return NetworkConnectionService.GetAllConnections();
+    }
 
-            // 真实物理网卡，链路 Up
-            return n.OperationalStatus == OperationalStatus.Up;
+    private async Task InitializeAsync()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        IsLoading = true;
+
+        await UpdateNetworkConnectionsStatusAsync();
+        await UpdatePppoeConnectionStatusAsync();
+
+        await dispatcher.InvokeAsync(async () =>
+        {
+            if (appSettings.HasSavedConnectionAuth.Value)
+            {
+                AccountId = appSettings.AccountId.Value;
+                Password = appSettings.Password.Value;
+                SelectedConnectionName = appSettings.SelectedConnectionName.Value;
+
+                if (!PppoeConnectionManagedByOutside)
+                {
+                    var item = NetworkConnections.FirstOrDefault(c => c.Name == appSettings.SelectedConnectionName.Value);
+
+                    if (item is not null)
+                        await ConnectAsync();
+                }
+            }
+
+            if (SelectedConnectionIndex >= 0)
+                SelectedConnectionName = NetworkConnections[(int)SelectedConnectionIndex].Name;
+
+            IsLoading = false;
+
+            NetworkInformation.NetworkStatusChanged += NetworkInformation_NetworkStatusChanged;
         });
-
-    public static IReadOnlyList<NetworkInterface> GetAllNics()
-    {
-        return NetworkInterface.GetAllNetworkInterfaces()
-            .Where(n =>
-                n.NetworkInterfaceType == NetworkInterfaceType.Ethernet &&
-                n.OperationalStatus == OperationalStatus.Up &&
-                !n.Name.Contains("-WFP", StringComparison.OrdinalIgnoreCase) &&
-                !n.Name.Contains("-Npcap", StringComparison.OrdinalIgnoreCase) &&
-                !n.Name.Contains("-QoS", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("WAN Miniport", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("VPN", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("Virtual", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("VMware", StringComparison.OrdinalIgnoreCase) &&
-                !n.Description.Contains("VirtualBox", StringComparison.OrdinalIgnoreCase))
-            .ToList();
     }
 
-    public StatusPageModel(IAppSettings appSettings)
+    private async void NetworkInformation_NetworkStatusChanged(object sender)
     {
-        this.appSettings = appSettings;
-        Init();
+        lock (locker)
+        {
+            var now = DateTime.UtcNow;
+            if (now - lastHandled < cooldown)
+                return;
+
+            lastHandled = now;
+        }
+
+        await UpdateNetworkConnectionsStatusAsync();
+        await UpdatePppoeConnectionStatusAsync();
     }
 
-    private void Init()
+    private async Task UpdateNetworkConnectionsStatusAsync()
     {
-        Interfaces.CollectionChanged += (s, e) => HasAvailableInterfaces = Interfaces.Count > 0;
+        var connections = await Task.Run(() => GetAllNics().ToList());
+        var profile = NetworkInformation.GetInternetConnectionProfile();
+        var level = profile.GetNetworkConnectivityLevel();
 
-        UpdateStatus();
-
-        if (appSettings.HasSavedConnectionAuth.Value)
+        await dispatcher.InvokeAsync(() =>
         {
-            AccountId = appSettings.AccountId.Value;
-            Password = appSettings.Password.Value;
-            SelectedInterfaceName = appSettings.SelectedConnectionName.Value;
+            for (int i = NetworkConnections.Count - 1; i >= 0; i--)
+            {
+                if (!connections.Any(c => c.Name == NetworkConnections[i].Name))
+                    NetworkConnections.RemoveAt(i);
+            }
 
-            var item = Interfaces.FirstOrDefault(c => c.Name == appSettings.SelectedConnectionName.Value);
+            foreach (var connection in connections)
+            {
+                if (!NetworkConnections.Any(c => c.Name == connection.Name))
+                    NetworkConnections.Add(new NetworkNameDisplayStatus(connection.Name));
+            }
 
-            _ = Connect();
-        }
+            foreach (var connection in NetworkConnections)
+            {
+                if (connection.Name == SelectedConnectionName)
+                    connection.Selected = true;
+            }
 
-        if (SelectedInterfaceIndex >= 0)
-            SelectedInterfaceName = Interfaces[(int)SelectedInterfaceIndex].Name;
+            HasAvailableConnections = NetworkConnections.Count > 0;
+            
+            if (level == NetworkConnectivityLevel.InternetAccess)
+            {
+                IsInternetAccess = true;
+            }
+
+            if (level == NetworkConnectivityLevel.LocalAccess || level == NetworkConnectivityLevel.ConstrainedInternetAccess)
+            {
+                
+            }
+
+            if (!appSettings.HasSavedConnectionAuth.Value)
+            {
+                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
+                return;
+            }
+
+            if (!HasAvailableConnections)
+            {
+                ShowDisplayMessage("未找到可用的网络连接。");
+                return;
+            }
+        });
     }
 
-    private void UpdateStatus()
+    private async Task UpdatePppoeConnectionStatusAsync()
     {
-        var interfaces = GetAllNics();
+        NativeMethods.RASCONN? connection;
 
-        System.Diagnostics.Debug.WriteLine("=== GetAllNics 结果 ===");
-        foreach (var it in interfaces)
-            System.Diagnostics.Debug.WriteLine($"[{it.Name}] desc=[{it.Description}]");
-
-        for (int i = Interfaces.Count - 1; i >= 0; i--)
+        try
         {
-            if (!interfaces.Any(it => it.Name == Interfaces[i].Name))
-            {
-                Interfaces.RemoveAt(i);
-            }
+            connection = await Task.Run(() => RasDialer.GetActivePppoeConnection());
         }
-
-        foreach (var it in interfaces)
+        catch (Win32Exception ex)
         {
-            if (!Interfaces.Any(c => c.Name == it.Name))
-            {
-                Interfaces.Add(new InterfaceNameDisplayStatus(it.Name));
-            }
-        }
-
-        foreach (var it in Interfaces)
-        {
-            if (it.Name == SelectedInterfaceName)
-            {
-                it.Selected = true;
-            }
-        }
-
-        if (!appSettings.HasSavedConnectionAuth.Value)
-        {
-            ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
+            await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex.Message));
             return;
         }
 
-        if (!EthernetCablePluggedIn)
+        await dispatcher.InvokeAsync(() =>
         {
-            ShowDisplayMessage("当前未接入有线网络连接。");
-            return;
-        }
+            ActivePppoeConnectionEntryName = connection?.entryName ?? string.Empty;
+
+            if (connection is not null)
+            {
+                if (connection?.entryName != ENTRY_NAME)
+                    PppoeConnectionManagedByOutside = true;
+                IsConnected = true;
+            }
+            else
+            {
+                PppoeConnectionManagedByOutside = false;
+                IsConnected = false;
+            }
+        });
     }
 
     private bool CanConnect()
     {
+        if (IsLoading)
+            return false;
+
         if (IsConnected)
             return false;
 
-        //if (HasAvailableConnections)
-        //    return true;
+        if (!HasAvailableConnections)
+            return false;
 
         if (string.IsNullOrWhiteSpace(AccountId) || string.IsNullOrWhiteSpace(Password))
             return false;
 
-        if (!EthernetCablePluggedIn)
+        if (PppoeConnectionManagedByOutside)
+            return false;
+
+        if (!NetworkConnections.Any(it => it.Name == SelectedConnectionName))
+        {
+            ShowDisplayMessage("在网络列表中没有找到目标网络连接项。");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool CanDisconnect()
+    {
+        if (IsLoading)
+            return false;
+
+        if (IsConnecting)
+            return true;
+
+        if (!IsConnected)
+            return false;
+
+        if (PppoeConnectionManagedByOutside)
             return false;
 
         return true;
     }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
-    private async Task Connect()
+    private async Task ConnectAsync()
     {
-        IsConnected = RasDialer.IsConnected();
-
         if (IsConnected || IsConnecting)
             return;
 
@@ -207,54 +321,109 @@ public partial class StatusPageModel : ObservableObject
             return;
         }
 
-        //if (!Connections.Any(c => c.ConnectionName == SelectedConnectionName))
-        //{
-        //    ShowDisplayMessage("在连接列表中没有找到目标连接项。");
-        //    return;
-        //}
+        IsConnecting = true;
+
+        if (!RasDialer.EntryExists(ENTRY_NAME))
+        {
+            RasDialer.CreateEntry(ENTRY_NAME, AccountId, Password);
+        }
+
+        await ExcuteConnectTaskAsync();
+
+        IsConnecting = false;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDisconnect))]
+    private async Task DisConnectAsync()
+    {
+        if (IsConnecting)
+        {
+            CancelCts(ref connectCts);
+            return;
+        }
+
+        await ExcuteDisconnectTaskAsync();
+
+        IsConnected = false;
+        IsConnecting = false;
+    }
+
+    private async Task ExcuteConnectTaskAsync()
+    {
+        ResetCts(ref connectCts);
+
+        var task = new Task(async () => {
+            try
+            {
+                RasDialer.Connect(ENTRY_NAME, AccountId, Password);
+
+                await dispatcher.InvokeAsync(() => IsConnected = true);
+
+                appSettings.HasSavedConnectionAuth.Value = true;
+                appSettings.AccountId.Value = AccountId;
+                appSettings.Password.Value = Password;
+                appSettings.SelectedConnectionName.Value = SelectedConnectionName;
+            }
+            catch (Win32Exception ex)
+            {
+                await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+            }
+        });
+
+        task.Start();
 
         try
         {
-            IsConnecting = true;
-
-            connectPtr = RasDialer.Dial(SelectedInterfaceName, AccountId, Password);
-
-            IsConnecting = false;
-            IsConnected = true;
-
-            appSettings.HasSavedConnectionAuth.Value = true;
-            appSettings.AccountId.Value = AccountId;
-            appSettings.Password.Value = Password;
+            await task.WaitAsync(connectCts!.Token);
         }
-        catch (InvalidOperationException ex)
+        catch (OperationCanceledException)
         {
-            ShowDisplayMessage(ex.Message);
+            return;
         }
     }
 
-    [RelayCommand]
-    private async Task DisConnect()
+    private async Task ExcuteDisconnectTaskAsync()
     {
-        if (!IsConnected)
-            return;
+        var task = new Task(async () => {
+            try
+            {
+                RasDialer.Disconnect(ENTRY_NAME);
 
-        if (connectPtr is null)
-            return;
+                await dispatcher.InvokeAsync(() => IsConnected = false);
+            }
+            catch (Win32Exception ex)
+            {
+                await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+            }
+        });
 
-        try
-        {
-            RasDialer.HangUp((IntPtr)connectPtr);
-        }
-        catch (InvalidOperationException ex)
-        {
-            ShowDisplayMessage(ex.Message);
-        }
+        task.Start();
+        await task.WaitAsync(CancellationToken.None);
+    }
 
-        IsConnected = false;
+    private void ShowDisplayMessage(Exception ex)
+    {
+        Debug.WriteLine(ex);
+        DisplayMessage = ex.Message;
     }
 
     private void ShowDisplayMessage(string message)
     {
+        Debug.WriteLine(message);
         DisplayMessage = message;
+    }
+
+    private static void ResetCts(ref CancellationTokenSource? cts, CancellationTokenSource? ctsToUse = null)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = ctsToUse ?? new CancellationTokenSource();
+    }
+
+    private static void CancelCts(ref CancellationTokenSource? cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
     }
 }

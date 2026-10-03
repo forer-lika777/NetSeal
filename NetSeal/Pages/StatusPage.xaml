@@ -10,44 +10,59 @@
     mc:Ignorable="d">
 
     <ScrollView>
-        <Grid Margin="60" ColumnSpacing="20">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="0" >
-                <ListView ItemsSource="{x:Bind ViewModel.Interfaces, Mode=OneWay}"
-                          SelectedIndex="{x:Bind ViewModel.SelectedInterfaceIndex, Mode=TwoWay}"
-                          Visibility="{x:Bind ViewModel.HasAvailableInterfaces, Converter={StaticResource BoolToVisibilityConverter}}"
-                          SelectionMode="Single" Height="700" VerticalAlignment="Stretch">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:InterfaceNameDisplayStatus">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition/>
-                                    <ColumnDefinition/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{x:Bind Name}"/>
-                                <TextBlock Grid.Column="1" Text="已选连接" Visibility="{x:Bind Selected, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-                <TextBlock Text="未找到可用网络连接" HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Visibility="{x:Bind ViewModel.HasAvailableInterfaces, Converter={StaticResource BoolToReversedVisibilityConverter}}"/>
+        <Grid>
+            <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}"/>
+            <Grid Margin="60" ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid Grid.Column="0" >
+                    <ListView ItemsSource="{x:Bind ViewModel.NetworkConnections, Mode=OneWay}"
+                              SelectedIndex="{x:Bind ViewModel.SelectedConnectionIndex, Mode=TwoWay}"
+                              SelectionMode="Single" Height="700" VerticalAlignment="Stretch">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:NetworkNameDisplayStatus">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Name}"/>
+                                    <TextBlock Grid.Column="1" Text="已选连接" Visibility="{x:Bind Selected, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock Text="未找到可用网络连接" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{x:Bind ViewModel.HasAvailableConnections, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                </Grid>
+                <StackPanel Grid.Column="1" Spacing="20">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="拨号网络"/>
+                        <Grid>
+                            <TextBlock Text="已连接" Visibility="{x:Bind ViewModel.IsConnected, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                            <TextBlock Text="未连接" Visibility="{x:Bind ViewModel.IsConnected, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Visibility="{x:Bind ViewModel.PppoeConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
+                            <TextBlock Text="（正在受外部连接控制："/>
+                            <TextBlock Text="{x:Bind ViewModel.ActivePppoeConnectionEntryName, Mode=OneWay}"/>
+                            <TextBlock Text="）"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock>
+                        <Run>已选网络：</Run>
+                        <Run Text="{x:Bind ViewModel.SelectedConnectionName, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBox x:Name="UsernameEnterBox" Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="UsernameEnterBox_KeyDown"/>
+                    <PasswordBox x:Name="PasswordEnterBox" Password="{x:Bind ViewModel.Password, Mode=TwoWay}" IsPasswordRevealButtonEnabled="True" 
+                                 GotFocus="PasswordEnterBox_GotFocus" KeyDown="PasswordEnterBox_KeyDown"/>
+                    <Button x:Name="ConnectButton" Content="连接" Command="{x:Bind ViewModel.ConnectCommand}"/>
+                    <Button Content="终止连接" Command="{x:Bind ViewModel.DisConnectCommand}"/>
+                    <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
+                </StackPanel>
             </Grid>
-            <StackPanel Grid.Column="1" Spacing="20">
-                <TextBlock>
-                    <Run>已选网络：</Run>
-                    <Run Text="{x:Bind ViewModel.SelectedInterfaceName, Mode=OneWay}"/>
-                </TextBlock>
-                <TextBox Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                <PasswordBox Password="{x:Bind ViewModel.Password, Mode=TwoWay}"/>
-                <Button Content="连接" Command="{x:Bind ViewModel.ConnectCommand}"/>
-                <Button Content="终止连接" Command="{x:Bind ViewModel.DisConnectCommand}"/>
-                <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}"/>
-            </StackPanel>
         </Grid>
+
     </ScrollView>
-    
 </Page>

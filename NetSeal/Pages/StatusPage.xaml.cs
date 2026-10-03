@@ -17,26 +17,62 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace NetSeal.Pages;
-/// <summary>
-/// An empty page that can be used on its own or navigated to within a Frame.
-/// </summary>
-public sealed partial class StatusPage : Page
+
+public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMessage>
 {
     public StatusPageModel ViewModel { get; set; } = null!;
 
     public StatusPage()
     {
         InitializeComponent();
+        ViewModel = App.Current.Services.GetRequiredService<StatusPageModel>();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        WeakReferenceMessenger.Default.Send<UpdateConnectionsMessage>();
-        ViewModel = App.Current.Services.GetRequiredService<StatusPageModel>();
+        StrongReferenceMessenger.Default.Register<ChangeNetworkConfirmMessage>(this);
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        StrongReferenceMessenger.Default.Unregister<ChangeNetworkConfirmMessage>(this);
+    }
+
+    public async void Receive(ChangeNetworkConfirmMessage message)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            PrimaryButtonText = "确定",
+            SecondaryButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            Title = "确定要更改选定网络吗？",
+            Content = "此网络与您先前拨号连接的网络并不相同，更改选定网络可能导致意外的错误连接。",
+        };
+
+        dialog.PrimaryButtonClick += (s, e) => message.TaskCompletionSource.SetResult();
+        dialog.SecondaryButtonClick += (s, e) => message.TaskCompletionSource.SetCanceled();
+
+        await dialog.ShowAsync();
+    }
+
+    private void PasswordEnterBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        PasswordEnterBox.SelectAll();
+    }
+
+    private void UsernameEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        PasswordEnterBox.Focus(FocusState.Programmatic);
+    }
+
+    private void PasswordEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel.ConnectCommand.CanExecute(e))
+            ViewModel.ConnectCommand.Execute(e);
     }
 }
