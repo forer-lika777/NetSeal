@@ -5,9 +5,9 @@ using System.Text;
 
 namespace NetSeal.Models;
 
-public partial class InterfaceNameDisplayStatus : ObservableObject
+public partial class NetworkNameDisplayStatus : ObservableObject
 {
-    public InterfaceNameDisplayStatus(string name)
+    public NetworkNameDisplayStatus(string name)
     {
         Name = name;
     }
