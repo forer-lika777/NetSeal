@@ -10,7 +10,10 @@ namespace NetSeal.Services;
 public class WinUIDispatcher : IUiDispatcher
 {
     private readonly DispatcherQueue queue;
-    public WinUIDispatcher(DispatcherQueue queue) => this.queue = queue;
+    public WinUIDispatcher(DispatcherQueue queue)
+    {
+        this.queue = queue;
+    }
 
     public bool IsOnUiThread => queue.HasThreadAccess;
 
