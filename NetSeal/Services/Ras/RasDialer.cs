@@ -10,7 +10,7 @@ using static NetSeal.Services.Ras.NativeMethods;
 namespace NetSeal.Services.Ras;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:使用 “LibraryImportAttribute” 而不是 “DllImportAttribute” 在编译时生成 P/Invoke 封送代码", Justification = "<挂起>")]
-public static class RasDialer
+public class RasDialer : IRasDialer
 {
     #region P/Invoke
 
@@ -567,14 +567,18 @@ public static class RasDialer
     #endregion
 
     /// <summary>
-    /// 拨号。返回连接句柄（用于断开）。
+    /// 使用指定的电话簿条目进行拨号。
     /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿 (PBK) 文件的完整路径和文件名。
+    /// 如果此参数为 null，则使用当前用户默认的电话簿文件。
+    /// </param>
     /// <param name="entryName"></param>
     /// <param name="userName"></param>
     /// <param name="password"></param>
     /// <returns></returns>
     /// <exception cref="Win32Exception"></exception>
-    public static void Connect(string entryName, string userName, string password)
+    public void Connect(string? phoneBook, string entryName, string userName, string password)
     {
         var p = new RASDIALPARAMS
         {
@@ -586,8 +590,8 @@ public static class RasDialer
             password = password,
             domain = "",
         };
-
-        uint ret = RasDial(IntPtr.Zero, null, in p, 0, null, out var conn);
+        
+        uint ret = RasDial(IntPtr.Zero, phoneBook, in p, 0, null, out var conn);
         if (ret != 0)
             throw new Win32Exception((int)ret, $"拨号连接失败: {GetErrorString(ret)}");
     }
@@ -599,7 +603,7 @@ public static class RasDialer
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     /// <exception cref="Win32Exception"></exception>
-    public static void Disconnect(string entryName)
+    public void Disconnect(string entryName)
     {
         if (string.IsNullOrEmpty(entryName))
             throw new ArgumentException("输入参数必须为非空值。");
@@ -615,47 +619,11 @@ public static class RasDialer
     }
 
     /// <summary>
-    /// 列出系统电话簿里的所有连接名。
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="Win32Exception"></exception>
-    public static List<RASENTRYNAME> ListAllEntries()
-    {
-        uint cb = 0;
-        uint ret = RasEnumEntries(null, null, null, ref cb, out uint count);
-
-        if (ret == ERROR_SUCCESS && count == 0)
-            return [];
-
-        if (ret != ERROR_BUFFER_TOO_SMALL)
-            throw new Win32Exception((int)ret, $"获取电话簿条目失败：{GetErrorString(ret)}");
-
-        int size = Marshal.SizeOf<RASENTRYNAME>();
-        int entriesCount = (int)(cb / size);
-        var buffer = new RASENTRYNAME[entriesCount];
-        buffer[0].size = size;
-
-        ret = RasEnumEntries(null, null, buffer, ref cb, out count);
-
-        if (ret == ERROR_INVALID_SIZE)
-            throw new Win32Exception((int)ret, "不是适配的操作系统平台。");
-
-        if (ret != ERROR_SUCCESS)
-            throw new Win32Exception((int)ret, $"获取电话簿条目失败：{GetErrorString(ret)}");
-
-        List<RASENTRYNAME> result = [];
-        for (int i = 0; i < count; i++)
-            result.Add(buffer[i]);
-
-        return result;
-    }
-
-    /// <summary>
     /// 获取当前已接通的 Pppoe 连接。若没有已接通的 Pppoe 连接，则返回 null。
     /// </summary>
     /// <returns></returns>
     /// <exception cref="Win32Exception"></exception>
-    public static RASCONN? GetActivePppoeConnection()
+    public RASCONN? GetActivePppoeConnection()
     {
         var all = ListActiveRasConnections();
         foreach (var c in all)
@@ -701,15 +669,59 @@ public static class RasDialer
     }
 
     /// <summary>
+    /// 列出指定电话簿里的所有连接名。
+    /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿 (PBK) 文件的完整路径和文件名。
+    /// 如果此参数为 null，则使用当前用户默认的电话簿文件。
+    /// </param>
+    /// <returns></returns>
+    /// <exception cref="Win32Exception"></exception>
+    public List<RASENTRYNAME> ListAllEntries(string? phoneBook)
+    {
+        uint cb = 0;
+        uint ret = RasEnumEntries(null, phoneBook, null, ref cb, out uint count);
+
+        if (ret == ERROR_SUCCESS && count == 0)
+            return [];
+
+        if (ret != ERROR_BUFFER_TOO_SMALL)
+            throw new Win32Exception((int)ret, $"获取电话簿条目失败：{GetErrorString(ret)}");
+
+        int size = Marshal.SizeOf<RASENTRYNAME>();
+        int entriesCount = (int)(cb / size);
+        var buffer = new RASENTRYNAME[entriesCount];
+        buffer[0].size = size;
+
+        ret = RasEnumEntries(null, phoneBook, buffer, ref cb, out count);
+
+        if (ret == ERROR_INVALID_SIZE)
+            throw new Win32Exception((int)ret, "不是适配的操作系统平台。");
+
+        if (ret != ERROR_SUCCESS)
+            throw new Win32Exception((int)ret, $"获取电话簿条目失败：{GetErrorString(ret)}");
+
+        List<RASENTRYNAME> result = [];
+        for (int i = 0; i < count; i++)
+            result.Add(buffer[i]);
+
+        return result;
+    }
+
+    /// <summary>
     /// 创建 Entry 条目。
     /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿 (PBK) 文件的完整路径和文件名。
+    /// 如果此参数为 null，则使用当前用户默认的电话簿文件。
+    /// </param>
     /// <param name="entryName"></param>
     /// <param name="userName"></param>
     /// <param name="password"></param>
     /// <exception cref="Win32Exception"></exception>
-    public static void CreateEntry(string entryName, string userName, string password)
+    public void CreateEntry(string? phoneBook, string entryName, string userName, string password)
     {
-        uint ret = RasValidateEntryName(null, entryName);
+        uint ret = RasValidateEntryName(phoneBook, entryName);
 
         if (ret == ERROR_INVALID_NAME)
             throw new ArgumentException("名称包含非法字符。", nameof(entryName));
@@ -736,7 +748,7 @@ public static class RasDialer
             encryptionType = RasEncryptionType.Optional,
         };
 
-        ret = RasSetEntryProperties(null, entryName, in entry, (uint)entry.size, null, 0);
+        ret = RasSetEntryProperties(phoneBook, entryName, in entry, (uint)entry.size, null, 0);
 
         if (ret != ERROR_SUCCESS)
             throw new Win32Exception((int)ret, $"创建电话簿条目失败。错误信息：{GetErrorString(ret)}");
@@ -752,20 +764,24 @@ public static class RasDialer
                 domain = ""
             };
 
-            ret = RasSetCredentials(null, entryName, in cred, false);
+            ret = RasSetCredentials(phoneBook, entryName, in cred, false);
             if (ret != ERROR_SUCCESS)
                 throw new Win32Exception((int)ret, $"设置凭据失败。错误信息：{GetErrorString(ret)}");
         }
     }
 
-   /// <summary>
-   /// 删除指定 Entry 条目。
-   /// </summary>
-   /// <param name="entryName"></param>
-   /// <exception cref="Win32Exception"></exception>
-    public static void RemoveEntry(string entryName)
+    /// <summary>
+    /// 删除指定 Entry 条目。
+    /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿 (PBK) 文件的完整路径和文件名。
+    /// 如果此参数为 null，则使用当前用户默认的电话簿文件。
+    /// </param>
+    /// <param name="entryName"></param>
+    /// <exception cref="Win32Exception"></exception>
+    public void RemoveEntry(string? phoneBook, string entryName)
     {
-        uint ret = RasDeleteEntry(null, entryName);
+        uint ret = RasDeleteEntry(phoneBook, entryName);
         if (ret != ERROR_SUCCESS)
             throw new Win32Exception((int)ret, $"删除 Entry 条目失败。错误信息：{GetErrorString(ret)}");
     }
@@ -773,12 +789,16 @@ public static class RasDialer
     /// <summary>
     /// 判断条目是否已存在
     /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿 (PBK) 文件的完整路径和文件名。
+    /// 如果此参数为 null，则使用当前用户默认的电话簿文件。
+    /// </param>
     /// <param name="entryName"></param>
     /// <returns></returns>
     /// <exception cref="Win32Exception"></exception>
-    public static bool EntryExists(string entryName)
+    public bool EntryExists(string? phoneBook, string entryName)
     {
-        uint ret = RasValidateEntryName(null, entryName);
+        uint ret = RasValidateEntryName(phoneBook, entryName);
         if (ret == ERROR_ALREADY_EXISTS)
             return true;
 

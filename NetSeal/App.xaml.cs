@@ -76,6 +76,7 @@ public partial class App : Application
 
         services.AddSingleton<StatusPageModel>();
         services.AddSingleton<IAppSettings, AppSettings>();
+        services.AddSingleton<IRasDialer, Services.Ras.RasDialer>();
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
 
         return services.BuildServiceProvider();
