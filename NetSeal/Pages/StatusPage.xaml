@@ -38,15 +38,16 @@
                                Visibility="{x:Bind ViewModel.HasAvailableConnections, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                 </Grid>
                 <StackPanel Grid.Column="1" Spacing="20">
+                    <InfoBar IsOpen="{x:Bind ViewModel.IsOtherNetworkInterfaceConnected, Mode=OneWay}"/>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="拨号网络"/>
+                        <TextBlock Text="网络"/>
                         <Grid>
-                            <TextBlock Text="已连接" Visibility="{x:Bind ViewModel.IsConnected, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
-                            <TextBlock Text="未连接" Visibility="{x:Bind ViewModel.IsConnected, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                            <TextBlock Text="已连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                            <TextBlock Text="未连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                         </Grid>
-                        <StackPanel Orientation="Horizontal" Visibility="{x:Bind ViewModel.PppoeConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Visibility="{x:Bind ViewModel.IsNetworkConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
                             <TextBlock Text="（正在受外部连接控制："/>
-                            <TextBlock Text="{x:Bind ViewModel.ActivePppoeConnectionEntryName, Mode=OneWay}"/>
+                            <TextBlock Text="{x:Bind ViewModel.ActiveNetworkConnectionName, Mode=OneWay}"/>
                             <TextBlock Text="）"/>
                         </StackPanel>
                     </StackPanel>
