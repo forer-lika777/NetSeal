@@ -44,7 +44,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasValidateEntryName(
         string? lpszPhonebook, 
         string lpszEntry);
@@ -116,7 +116,7 @@ public static class RasDialer
     /// </list></para>
     /// </returns>
 
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasSetEntryProperties(
         string? lpszPhonebook,
         string lpszEntry,
@@ -181,7 +181,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasGetEntryProperties(
         string? lpszPhonebook, 
         string lpszEntry, 
@@ -215,7 +215,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasDeleteEntry(
         string? lpszPhonebook, 
         string lpszEntry);
@@ -264,7 +264,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasSetCredentials(
         string? lpszPhonebook, 
         string lpszEntry, 
@@ -319,7 +319,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasEnumEntries(
         string? reserved, 
         string? lpszPhonebook, 
@@ -355,7 +355,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasEnumConnections(
         [In, Out] RASCONN[]? lprasconn,
         ref uint lpcb,
@@ -428,7 +428,7 @@ public static class RasDialer
     /// <para>如果函数成功，则返回值 <b>ERROR_SUCCESS</b> ，并在 <paramref name="lphRasConn"/> 指向的变量中返回 RAS 连接的句柄。</para>
     /// <para>如果函数失败，则返回值为“<see href="https://learn.microsoft.com/zh-cn/windows/desktop/RRAS/routing-and-remote-access-error-codes">路由和远程访问错误代码</see>”或“Winerror.h”。</para>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasDial(
         in RASDIALEXTENSIONS lpRasDialExtensions,
         string? lpszPhonebook,
@@ -504,7 +504,7 @@ public static class RasDialer
     /// <para>如果函数成功，则返回值 <b>ERROR_SUCCESS</b> ，并在 <paramref name="lphRasConn"/> 指向的变量中返回 RAS 连接的句柄。</para>
     /// <para>如果函数失败，则返回值为“<see href="https://learn.microsoft.com/zh-cn/windows/desktop/RRAS/routing-and-remote-access-error-codes">路由和远程访问错误代码</see>”或“Winerror.h”。</para>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasDial(
         IntPtr lpRasDialExtensions,
         string? lpszPhonebook,
@@ -530,7 +530,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasHangUp(
         IntPtr hRasConn);
 
@@ -558,7 +558,7 @@ public static class RasDialer
     /// </item>
     /// </list>
     /// </returns>
-    [DllImport("rasapi32.dll", CharSet = CharSet.Auto)]
+    [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasGetErrorString(
         uint uErrorValue,
         [Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder lpszErrorString,
