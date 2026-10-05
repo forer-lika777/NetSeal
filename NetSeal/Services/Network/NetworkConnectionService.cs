@@ -7,17 +7,71 @@ using System.Runtime.InteropServices;
 namespace NetSeal.Services.Network;
 public static class NetworkConnectionService
 {
-    public static List<NetworkConnection> GetAllConnections()
+    /// <summary>
+    /// 获取系统存储过的所有逻辑网络。
+    /// </summary>
+    /// <returns></returns>
+    public static List<INetwork> GetAllNetworks()
     {
-        var ethernets = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(ni =>
-                ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet &&
-                ni.OperationalStatus == OperationalStatus.Up &&
-                !ni.Description.Contains("Virtual", StringComparison.OrdinalIgnoreCase) &&
-                !ni.Description.Contains("Hyper-V", StringComparison.OrdinalIgnoreCase) &&
-                !ni.Description.Contains("VMware", StringComparison.OrdinalIgnoreCase) &&
-                !ni.Description.Contains("TAP", StringComparison.OrdinalIgnoreCase) &&
-                !ni.Description.Contains("VPN", StringComparison.OrdinalIgnoreCase));
+        INetworkListManager networkListManager = (INetworkListManager)new NetworkListManagerClass();
+        IEnumNetworks networks = networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED);
+
+        var result = new List<INetwork>();
+
+        nint[] buffer = new IntPtr[1];
+
+        while (networks.Next(1, buffer, out uint netFetched) == 0 && netFetched == 1)
+        {
+            try
+            {
+                INetwork? network = (INetwork)Marshal.GetObjectForIUnknown(buffer[0]);
+                result.Add(network);
+            }
+            finally
+            {
+                Marshal.Release(buffer[0]);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取输入逻辑网络下的所有网络连接。
+    /// </summary>
+    /// <param name="network">要操作的逻辑网络</param>
+    /// <returns></returns>
+    public static List<INetworkConnection> GetAllNetworkConnections(INetwork network)
+    {
+        IEnumNetworkConnections connections = network.GetNetworkConnections();
+
+        var result = new List<INetworkConnection>();
+
+        nint[] buffer = new IntPtr[1];
+
+        while (connections.Next(1, buffer, out uint fetched) == 0 && fetched == 1)
+        {
+            try
+            {
+                INetworkConnection connetion = (INetworkConnection)Marshal.GetObjectForIUnknown(buffer[0]);
+                result.Add(connetion);
+            }
+            finally
+            {
+                Marshal.Release(buffer[0]);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 获取所有接入了以太网的逻辑网络。
+    /// </summary>
+    /// <returns></returns>
+    public static List<NetworkConnection> GetAllPhysicalAdapterNetworks()
+    {
+        var ethernets = NetworkAdapterService.GetPhysicalEthernetAdapters().Where(x => x.OperationalStatus == OperationalStatus.Up);
 
         if (!ethernets.Any())
             return [];
@@ -27,51 +81,26 @@ public static class NetworkConnectionService
         foreach (var ethernet in ethernets)
         {
             if (!Guid.TryParse(ethernet.Id, out var targetAdapterId))
-                return [];
+                continue;
 
-            var nlm = (INetworkListManager)new NetworkListManagerClass();
-
-            var enumNets = nlm.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_ALL);
-            var netBuf = new IntPtr[1];
-
-            while (enumNets.Next(1, netBuf, out uint netFetched) == 0 && netFetched == 1)
+            var networks = GetAllNetworks();
+            foreach (var network in networks)
             {
-                INetwork? net = null;
-                try
+                var connections = GetAllNetworkConnections(network);
+                foreach (var connection in connections)
                 {
-                    net = (INetwork)Marshal.GetObjectForIUnknown(netBuf[0]);
-                    
-                    var conns = net.GetNetworkConnections();
-                    var connBuf = new IntPtr[1];
-
-                    while (conns.Next(1, connBuf, out uint connFetched) == 0 && connFetched == 1)
+                    if (connection.GetAdapterId() == targetAdapterId)
                     {
-                        try
+                        result.Add(new NetworkConnection
                         {
-                            var conn = (INetworkConnection)Marshal.GetObjectForIUnknown(connBuf[0]);
+                            Name = $"({ethernet.Name}) {network.GetName()}",
+                            Id = network.GetNetworkId(),
+                            IsConnected = network.IsConnected,
+                            IsPrivate = network.GetCategory() == NLM_NETWORK_CATEGORY.NLM_NETWORK_CATEGORY_PRIVATE
+                        });
 
-                            if (conn.GetAdapterId() == targetAdapterId)
-                            {
-                                result.Add(new NetworkConnection
-                                {
-                                    Name = $"({ethernet.Name}) {net.GetName()}",
-                                    Id = net.GetNetworkId(),
-                                    IsConnected = net.IsConnected,
-                                    IsPrivate = net.GetCategory() == NLM_NETWORK_CATEGORY.NLM_NETWORK_CATEGORY_PRIVATE
-                                });
-
-                                break;
-                            }
-                        }
-                        finally
-                        {
-                            Marshal.Release(connBuf[0]);
-                        }
+                        break;
                     }
-                }
-                finally
-                {
-                    Marshal.Release(netBuf[0]);
                 }
             }
         }

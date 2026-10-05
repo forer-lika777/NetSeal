@@ -141,7 +141,7 @@ public partial class StatusPageModel : ObservableObject
 
     public static IEnumerable<NetworkConnection> GetAllNics()
     {
-        return NetworkConnectionService.GetAllConnections();
+        return NetworkConnectionService.GetAllPhysicalAdapterNetworks();
     }
 
     private async Task InitializeAsync()
