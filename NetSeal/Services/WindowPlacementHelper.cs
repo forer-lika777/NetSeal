@@ -4,10 +4,7 @@ using System.Text;
 
 namespace NetSeal.Services;
 
-public class NetworkManager
+public static class WindowPlacementHelper
 {
-    public NetworkManager()
-    {
 
-    }
 }

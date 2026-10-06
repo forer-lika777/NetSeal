@@ -26,6 +26,8 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using NetSeal.ViewModels;
 using NetSeal.Services;
+using NetSeal.Services.Network;
+using NetSeal.Services.Network.Ras;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -76,9 +78,11 @@ public partial class App : Application
 
         services.AddSingleton<StatusPageModel>();
         services.AddSingleton<IAppSettings, AppSettings>();
-        services.AddSingleton<IRasDialer, Services.Ras.RasDialer>();
+        services.AddSingleton<IRasDialer, RasDialer>();
+        services.AddSingleton<INetworkConnectionService, NetworkConnectionService>();
+        services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
-
+        
         return services.BuildServiceProvider();
     }
 

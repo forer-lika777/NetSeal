@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace NetSeal.Services.Ras;
+namespace NetSeal.Services.Network.Ras;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Luid

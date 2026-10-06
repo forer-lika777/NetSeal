@@ -37,30 +37,47 @@
                     <TextBlock Text="未找到可用网络连接" HorizontalAlignment="Center" VerticalAlignment="Center"
                                Visibility="{x:Bind ViewModel.HasAvailableConnections, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                 </Grid>
-                <StackPanel Grid.Column="1" Spacing="20">
-                    <InfoBar IsOpen="{x:Bind ViewModel.IsOtherNetworkInterfaceConnected, Mode=OneWay}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="网络"/>
-                        <Grid>
-                            <TextBlock Text="已连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
-                            <TextBlock Text="未连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Visibility="{x:Bind ViewModel.IsNetworkConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}">
-                            <TextBlock Text="（正在受外部连接控制："/>
-                            <TextBlock Text="{x:Bind ViewModel.ActiveNetworkConnectionName, Mode=OneWay}"/>
-                            <TextBlock Text="）"/>
+                <StackPanel Grid.Column="1">
+                    <InfoBar Margin="0, 20" Visibility="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                             IsOpen="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Mode=OneWay}" Severity="Informational"
+                             Title="提示" Message="当前已接入互联网，无需进行 pppoe 网络拨号连接。" IsClosable="False">
+                        <TextBlock Margin="40, 0, 0, 16" >
+                            <Run Text="当前已连接到：" FontFamily="Microsoft YaHei UI"/>
+                            <Run Text="{x:Bind ViewModel.ActiveNetworkName}" FontFamily="Microsoft YaHei UI"/>
+                        </TextBlock>
+                    </InfoBar>
+                    <InfoBar Margin="0, 20" Visibility="{x:Bind ViewModel.IsOtherNetworkAdapterConnected, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                             IsOpen="{x:Bind ViewModel.IsOtherNetworkAdapterConnected, Mode=OneWay}" Severity="Informational"
+                             Title="提示" Message="您当前正在使用无线网络连接，请连接有线网络（以太网）来使用 pppoe 网络拨号连接。" IsClosable="False">
+                        <TextBlock Margin="40, 0, 0, 16" >
+                            <Run Text="当前的网络适配器：" FontFamily="Microsoft YaHei UI"/>
+                            <Run Text="{x:Bind ViewModel.ActiveNetworkAdapterName}" FontFamily="Microsoft YaHei UI"/>
+                        </TextBlock>
+                    </InfoBar>
+                    <InfoBar Margin="0, 20" Visibility="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
+                             IsOpen="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside}" Severity="Informational"
+                             Title="提示">
+                        <TextBlock Margin="40, 0, 0, 16" Text="当前网络正在由外部 pppoe 网络拨号连接控制。网络名称："/>
+                    </InfoBar>
+                    <StackPanel Spacing="20">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="网络"/>
+                            <Grid>
+                                <TextBlock Text="已连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                                <TextBlock Text="未连接" Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                            </Grid>
                         </StackPanel>
+                        <TextBlock>
+                            <Run>已选网络：</Run>
+                            <Run Text="{x:Bind ViewModel.SelectedConnectionName, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBox x:Name="UsernameEnterBox" Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="UsernameEnterBox_KeyDown"/>
+                        <PasswordBox x:Name="PasswordEnterBox" Password="{x:Bind ViewModel.Password, Mode=TwoWay}" IsPasswordRevealButtonEnabled="True" 
+                                     GotFocus="PasswordEnterBox_GotFocus" KeyDown="PasswordEnterBox_KeyDown"/>
+                        <Button x:Name="ConnectButton" Content="连接" Command="{x:Bind ViewModel.ConnectCommand}"/>
+                        <Button Content="终止连接" Command="{x:Bind ViewModel.DisConnectCommand}"/>
+                        <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <TextBlock>
-                        <Run>已选网络：</Run>
-                        <Run Text="{x:Bind ViewModel.SelectedConnectionName, Mode=OneWay}"/>
-                    </TextBlock>
-                    <TextBox x:Name="UsernameEnterBox" Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" KeyDown="UsernameEnterBox_KeyDown"/>
-                    <PasswordBox x:Name="PasswordEnterBox" Password="{x:Bind ViewModel.Password, Mode=TwoWay}" IsPasswordRevealButtonEnabled="True" 
-                                 GotFocus="PasswordEnterBox_GotFocus" KeyDown="PasswordEnterBox_KeyDown"/>
-                    <Button x:Name="ConnectButton" Content="连接" Command="{x:Bind ViewModel.ConnectCommand}"/>
-                    <Button Content="终止连接" Command="{x:Bind ViewModel.DisConnectCommand}"/>
-                    <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
                 </StackPanel>
             </Grid>
         </Grid>

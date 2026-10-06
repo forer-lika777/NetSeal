@@ -15,7 +15,7 @@ using System;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
-namespace NetSeal.Services.Ras;
+namespace NetSeal.Services.Network.Ras;
 
 internal static class Ras
 {

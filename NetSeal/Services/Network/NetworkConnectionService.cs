@@ -1,17 +1,26 @@
-﻿using System;
+﻿using NetSeal.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 
 namespace NetSeal.Services.Network;
-public static class NetworkConnectionService
+
+public class NetworkConnectionService : INetworkConnectionService
 {
+    private readonly INetworkAdapterService adapterService;
+
+    public NetworkConnectionService(INetworkAdapterService adapterService)
+    {
+        this.adapterService = adapterService;
+    }
+
     /// <summary>
     /// 获取系统存储过的所有逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public static List<INetwork> GetAllNetworks()
+    public List<INetwork> GetAllNetworks()
     {
         INetworkListManager networkListManager = (INetworkListManager)new NetworkListManagerClass();
         IEnumNetworks networks = networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED);
@@ -41,7 +50,7 @@ public static class NetworkConnectionService
     /// </summary>
     /// <param name="network">要操作的逻辑网络</param>
     /// <returns></returns>
-    public static List<INetworkConnection> GetAllNetworkConnections(INetwork network)
+    public List<INetworkConnection> GetAllNetworkConnections(INetwork network)
     {
         IEnumNetworkConnections connections = network.GetNetworkConnections();
 
@@ -69,9 +78,9 @@ public static class NetworkConnectionService
     /// 获取所有接入了以太网的逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public static List<NetworkConnection> GetAllPhysicalAdapterNetworks()
+    public List<NetworkConnection> GetAllPhysicalAdapterNetworks()
     {
-        var ethernets = NetworkAdapterService.GetPhysicalEthernetAdapters().Where(x => x.OperationalStatus == OperationalStatus.Up);
+        var ethernets = adapterService.GetPhysicalEthernetAdapters().Where(x => x.OperationalStatus == OperationalStatus.Up);
 
         if (!ethernets.Any())
             return [];

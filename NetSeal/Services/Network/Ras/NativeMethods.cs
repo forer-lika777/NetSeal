@@ -14,6 +14,7 @@
 
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.VisualBasic;
+using NetSeal.Services.Ras;
 using System;
 using System.ComponentModel;
 using System.Reflection.Metadata;
@@ -24,7 +25,7 @@ using Windows.System;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using FILETIME = System.Runtime.InteropServices.ComTypes.FILETIME;
 
-namespace NetSeal.Services.Ras;
+namespace NetSeal.Services.Network.Ras;
 
 /// <summary>
 /// Contains the remote access service (RAS) API entry points and structure definitions.

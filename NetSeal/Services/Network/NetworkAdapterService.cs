@@ -6,9 +6,9 @@ using System.Text;
 
 namespace NetSeal.Services.Network;
 
-public static class NetworkAdapterService
+public class NetworkAdapterService : INetworkAdapterService
 {
-    public static List<NetworkInterface> GetPhysicalEthernetAdapters()
+    public List<NetworkInterface> GetPhysicalEthernetAdapters()
     {
         var interfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();
         var result = new List<NetworkInterface>();

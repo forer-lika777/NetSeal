@@ -5,9 +5,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using static NetSeal.Services.Ras.NativeMethods;
+using static NetSeal.Services.Network.Ras.NativeMethods;
 
-namespace NetSeal.Services.Ras;
+namespace NetSeal.Services.Network.Ras;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:使用 “LibraryImportAttribute” 而不是 “DllImportAttribute” 在编译时生成 P/Invoke 封送代码", Justification = "<挂起>")]
 public class RasDialer : IRasDialer

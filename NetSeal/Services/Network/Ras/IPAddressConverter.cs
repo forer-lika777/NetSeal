@@ -12,7 +12,7 @@
 // </copyright>
 //--------------------------------------------------------------------------
 
-namespace NetSeal.Services.Ras;
+namespace NetSeal.Services.Network.Ras;
 
 using System;
 using System.ComponentModel;

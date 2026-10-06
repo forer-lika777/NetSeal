@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using static NetSeal.Services.Ras.NativeMethods;
+using static NetSeal.Services.Network.Ras.NativeMethods;
 
-namespace NetSeal.Services;
+namespace NetSeal.Services.Network.Ras;
 
 public interface IRasDialer
 {

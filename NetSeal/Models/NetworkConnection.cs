@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace NetSeal.Services.Network;
+namespace NetSeal.Models;
 
 public class NetworkConnection
 {

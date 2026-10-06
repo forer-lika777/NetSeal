@@ -8,6 +8,11 @@ using System.Text;
 
 namespace NetSeal.Services.Network;
 
+[ComImport, Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B")]
+public class NetworkListManagerClass
+{
+}
+
 [ComImport, Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 public interface INetworkListManager
