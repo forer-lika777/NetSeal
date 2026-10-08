@@ -67,11 +67,17 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
 
     private void UsernameEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (e.Key != Windows.System.VirtualKey.Enter)
+            return;
+
         PasswordEnterBox.Focus(FocusState.Programmatic);
     }
 
     private void PasswordEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (e.Key != Windows.System.VirtualKey.Enter)
+            return;
+
         if (ViewModel.ConnectCommand.CanExecute(e))
             ViewModel.ConnectCommand.Execute(e);
     }
