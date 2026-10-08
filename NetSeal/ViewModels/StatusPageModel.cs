@@ -31,7 +31,7 @@ public partial class StatusPageModel : ObservableObject
 
     private readonly IAppSettings appSettings;
     private readonly IUiDispatcher dispatcher;
-    private readonly INetworkConnectionService connectionService;
+    private readonly INetworkService networkService;
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
 
@@ -43,36 +43,36 @@ public partial class StatusPageModel : ObservableObject
 
     private bool initialized = false;
 
-    public StatusPageModel(IAppSettings appSettings, IUiDispatcher dispatcher, INetworkConnectionService connectionService, INetworkAdapterService adapterService, IRasDialer rasDialer)
+    public StatusPageModel(IAppSettings appSettings, IUiDispatcher dispatcher, INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
     {
         this.appSettings = appSettings;
         this.dispatcher = dispatcher;
-        this.connectionService = connectionService;
+        this.networkService = networkService;
         this.adapterService = adapterService;
         this.rasDialer = rasDialer;
         _ = InitializeAsync();
     }
 
     [ObservableProperty]
-    public partial ObservableCollection<NetworkNameDisplayStatus> NetworkConnections { get; set; } = [];
+    public partial ObservableCollection<Network> Networks { get; set; } = [];
 
     [ObservableProperty]
     public partial bool IsEthernetNetworkAdapterConnected { get; set; } = false;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
-    public partial bool IsPppoeNetworkConnected { get; set; } = false;
+    public partial bool IsOtherNetworkAdapterConnected { get; set; } = false;
 
     [ObservableProperty]
-    public partial bool IsOtherNetworkAdapterConnected { get; set; } = false;
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    public partial bool IsPppoeNetworkConnected { get; set; } = false;
 
     [ObservableProperty]
     public partial bool IsInternetAccess { get; set; } = false;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial bool HasAvailableConnections { get; set; } = false;
+    public partial bool HasAvailableNetworks { get; set; } = false;
 
     [ObservableProperty]
     public partial bool IsPppoeConnectionManagedByOutside { get; set; } = false;
@@ -93,18 +93,18 @@ public partial class StatusPageModel : ObservableObject
     public partial string ActivePppoeConnectionEntryName { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string SelectedConnectionName { get; set; } = string.Empty;
+    public partial Network? SelectedNetwork { get; set; } = null;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial int SelectedConnectionIndex { get; set; } = -1;
+    public partial int SelectedNetworkIndex { get; set; } = -1;
 
-    async partial void OnSelectedConnectionIndexChanged(int oldValue, int newValue)
+    async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
     {
         if (newValue < 0)
             return;
 
-        if (!string.IsNullOrEmpty(SelectedConnectionName))
+        if (SelectedNetwork is not null)
         {
             var tcs = new TaskCompletionSource();
             StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
@@ -115,27 +115,22 @@ public partial class StatusPageModel : ObservableObject
             }
             catch (OperationCanceledException)
             {
-                SelectedConnectionIndex = oldValue;
+                SelectedNetworkIndex = oldValue;
                 return;
             }
         }
 
-        SelectedConnectionName = NetworkConnections[(int)newValue].Name;
+        SelectedNetwork = Networks[(int)newValue];
     }
-
-    //[ObservableProperty]
-    //[NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    //[NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
-    //public partial bool IsConnected { get; set; } = false;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     public partial bool IsConnecting { get; set; } = false;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
     public partial bool IsLoading { get; set; } = false;
 
     [ObservableProperty]
@@ -163,23 +158,23 @@ public partial class StatusPageModel : ObservableObject
 
         await dispatcher.InvokeAsync(async () =>
         {
-            if (appSettings.HasSavedConnectionAuth.Value)
+            if (appSettings.HasSavedNetworkAuth.Value)
             {
                 AccountId = appSettings.AccountId.Value;
                 Password = appSettings.Password.Value;
-                SelectedConnectionName = appSettings.SelectedConnectionName.Value;
+                SelectedNetwork = appSettings.SelectedNetwork.Value;
 
                 if (!IsNetworkConnectionManagedByOutside)
                 {
-                    var item = NetworkConnections.FirstOrDefault(c => c.Name == appSettings.SelectedConnectionName.Value);
+                    var item = Networks.FirstOrDefault(c => c.Name == SelectedNetwork.Name);
 
                     if (item is not null)
                         await ConnectAsync();
                 }
             }
 
-            if (SelectedConnectionIndex >= 0)
-                SelectedConnectionName = NetworkConnections[(int)SelectedConnectionIndex].Name;
+            if (SelectedNetworkIndex >= 0)
+                SelectedNetwork = Networks[(int)SelectedNetworkIndex];
 
             IsLoading = false;
 
@@ -204,51 +199,56 @@ public partial class StatusPageModel : ObservableObject
 
     private async Task UpdateNetworkConnectionsStatusAsync()
     {
-        var connections = await Task.Run(() => connectionService.GetAllPhysicalAdapterNetworks());
+        // 获取网络信息是耗时操作，使用异步方法包装以防止阻塞 UI 线程
+        List<Network> networks = await Task.Run(() => networkService.GetAllNetworks().Where(x => x.IsConnected).ToList());
+        List<Network> ethernetNetworks = await Task.Run(() => networkService.GetAllEthernetAdapterNetworks());
+
         ConnectionProfile? profile = await Task.Run(() => NetworkInformation.GetInternetConnectionProfile());
         NetworkConnectivityLevel? level = profile?.GetNetworkConnectivityLevel() ?? NetworkConnectivityLevel.None;
 
+        // 回到 UI 线程
         await dispatcher.InvokeAsync(() =>
         {
-            for (int i = NetworkConnections.Count - 1; i >= 0; i--)
+            for (int i = Networks.Count - 1; i >= 0; i--)
             {
-                if (!connections.Any(c => c.Name == NetworkConnections[i].Name))
-                    NetworkConnections.RemoveAt(i);
+                if (!ethernetNetworks.Any(c => c.Name == Networks[i].Name))
+                    Networks.RemoveAt(i);
             }
 
-            foreach (var connection in connections)
+            foreach (var network in ethernetNetworks)
             {
-                if (!NetworkConnections.Any(c => c.Name == connection.Name))
-                    NetworkConnections.Add(new NetworkNameDisplayStatus(connection.Name));
+                if (!Networks.Any(c => c.Name == network.Name))
+                    Networks.Add(network);
             }
 
-            foreach (var connection in NetworkConnections)
+            foreach (var network in Networks)
             {
-                if (connection.Name == SelectedConnectionName)
-                    connection.Selected = true;
+                if (network.Name == SelectedNetwork?.Name)
+                    network.IsSelected = true;
             }
 
-            HasAvailableConnections = NetworkConnections.Count > 0;
+            HasAvailableNetworks = Networks.Count > 0;
 
-            // 检查是否连接到互联网。
+            // 检查是否连接到互联网
             IsInternetAccess = level == NetworkConnectivityLevel.InternetAccess;
 
-            // 检查系统网络接入状态：可访问互联网、可访问受限的互联网（需要提供网络认证）、可访问本地局域网。
+            // 检查系统网络接入状态：可访问互联网、可访问受限的互联网（需要提供网络认证）、可访问本地局域网
             if (level != NetworkConnectivityLevel.None)
             {
                 ActiveNetworkAdapterName = profile?.ProfileName ?? "无网络连接";
-                var networks = connectionService.GetAllNetworks().Where(x => x.IsConnected);
-                if (networks.Any())
+                if (networks.Count != 0)
                 {
+                    ActiveNetworkName = string.Empty;
+
                     foreach (var network in networks)
                     {
                         if (string.IsNullOrWhiteSpace(ActiveNetworkName))
                         {
-                            ActiveNetworkName = network.GetName() ?? "未知网络名称";
+                            ActiveNetworkName = network.Name ?? "未知网络名称";
                         }
                         else
                         {
-                            ActiveNetworkName += $", {network.GetName() ?? "未知网络名称"}";
+                            ActiveNetworkName += $", {network.Name ?? "未知网络名称"}";
                         }
                     }
                 }
@@ -259,11 +259,13 @@ public partial class StatusPageModel : ObservableObject
 
                 bool isEthernet = false;
 
-                // 非 Wi-Fi 网络和移动蜂窝网络表明该配置是有线网络适配器（但可能是虚拟网络适配器）。
-                if (!profile!.IsWlanConnectionProfile && !profile!.IsWwanConnectionProfile) 
+                // 非 Wi-Fi 网络和移动蜂窝网络表明该配置是有线网络适配器（但可能是虚拟网络适配器）
+                if (profile is not null && !profile.IsWlanConnectionProfile && !profile.IsWwanConnectionProfile) 
                 {
-                    // 与物理网络适配器（以太网）比对 Id。
-                    foreach (var ni in adapterService.GetPhysicalEthernetAdapters())
+                    List<NetworkInterface> interfaces = adapterService.GetPhysicalEthernetAdapters();
+
+                    // 与物理网络适配器（以太网）比对 Id
+                    foreach (var ni in interfaces)
                     {
                         if (Guid.TryParse(ni.Id, out var niId) && niId == profile.NetworkAdapter.NetworkAdapterId)
                         {
@@ -272,34 +274,36 @@ public partial class StatusPageModel : ObservableObject
                             break;
                         }
                     }
+
+                    // 但如果此网络适配器是拨号连接，则不会匹配以太网适配器 id，而是使用自己的网络适配器 id。还需要后续判断
                 }
 
                 if (isEthernet)
                 {
-                    // 有接入网络的网络适配器，且该适配器是以太网。
+                    // 有接入网络的网络适配器，且该适配器是以太网
                     IsEthernetNetworkAdapterConnected = true;
                     IsOtherNetworkAdapterConnected = false;
                 }
                 else
                 {
-                    // 有接入网络的网络适配器，但该适配器不是以太网（可能是无线网络或虚拟网卡）。
+                    // 有接入网络的网络适配器，但该适配器不是以太网（可能是无线网络或虚拟网卡）
                     IsEthernetNetworkAdapterConnected = false;
                     IsOtherNetworkAdapterConnected = true;
                 }
             }
             else
             {
-                // 没有接入网络的网络适配器。
+                // 没有接入网络的网络适配器
                 IsEthernetNetworkAdapterConnected = IsOtherNetworkAdapterConnected = false;
             }
 
-            if (!appSettings.HasSavedConnectionAuth.Value)
+            if (!appSettings.HasSavedNetworkAuth.Value)
             {
                 ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
                 return;
             }
 
-            if (!HasAvailableConnections)
+            if (!HasAvailableNetworks)
             {
                 ShowDisplayMessage("未找到可用的网络连接。");
                 return;
@@ -313,36 +317,31 @@ public partial class StatusPageModel : ObservableObject
 
         await dispatcher.InvokeAsync(() =>
         {
-            if (IsEthernetNetworkAdapterConnected)
+            // 当前系统接入了以太网连接（可能不是 pppoe 连接）
+            if (connection is NativeMethods.RASCONN conn)
             {
-                // 当前系统接入了以太网连接（可能不是 pppoe 连接）。
-                if (connection is NativeMethods.RASCONN conn)
-                {
-                    // 有 pppoe 连接。
-                    IsPppoeNetworkConnected = true;
-                    ActivePppoeConnectionEntryName = conn.entryName;
-                    // 此 pppoe 连接是当前应用程序管理的 pppoe 连接。
-                    IsPppoeConnectionManagedByOutside = ActivePppoeConnectionEntryName != ENTRY_NAME;
-                }
-                else
-                {
-                    // 无 pppoe 连接
-                    IsPppoeNetworkConnected = false;
-                    ActivePppoeConnectionEntryName = string.Empty;
-                    // 此 pppoe 连接不是当前应用程序管理的 pppoe 连接。
-                    IsPppoeConnectionManagedByOutside = false;
-                }
+                // 有 pppoe 连接。
+                IsPppoeNetworkConnected = true;
+                ActivePppoeConnectionEntryName = conn.entryName;
+                // 此 pppoe 连接是当前应用程序管理的 pppoe 连接
+                IsPppoeConnectionManagedByOutside = ActivePppoeConnectionEntryName != ENTRY_NAME;
+                // pppoe 连接一定使用以太网适配器
+                IsEthernetNetworkAdapterConnected = true;
+                IsOtherNetworkAdapterConnected= false;
             }
             else
             {
-                // 当前系统没有接入以太网连接（可能是无线网络连接或无网络连接），无 pppoe 连接（pppoe 网络连接要求接入以太网）。
+                // 无 pppoe 连接
                 IsPppoeNetworkConnected = false;
+                ActivePppoeConnectionEntryName = string.Empty;
+                // 此 pppoe 连接不是当前应用程序管理的 pppoe 连接
+                IsPppoeConnectionManagedByOutside = false;
             }
 
-            // 有 pppoe 连接，且此连接是当前应用程序管理的 pppoe 连接，表明系统的网络连接由当前应用程序管理。
+            // 有 pppoe 连接，且此连接是当前应用程序管理的 pppoe 连接，表明系统的网络连接由当前应用程序管理
             IsNetworkConnectionManagedByOutside = !(IsPppoeNetworkConnected && !IsPppoeConnectionManagedByOutside);
 
-            // 当前网络已接入互联网，但是没有 pppoe 连接，表明网络是非 pppoe 类型（例如直接接入的家庭宽带网络）。
+            // 当前网络已接入互联网，但是没有 pppoe 连接，表明网络是非 pppoe 类型（例如直接接入的家庭宽带网络）
             IsNotPppoeNetworkConnection = IsInternetAccess && !IsPppoeNetworkConnected;
         });
     }
@@ -352,27 +351,27 @@ public partial class StatusPageModel : ObservableObject
         if (IsLoading)
             return false;
 
-        // 以太网未连接。
+        // 以太网未连接
         if (!IsEthernetNetworkAdapterConnected)
             return false;
 
-        // pppoe 宽带连接已连接。
+        // pppoe 宽带连接已连接
         if (IsPppoeNetworkConnected)
             return false;
 
-        // 有可用网络。
-        if (!HasAvailableConnections)
+        // 有可用网络
+        if (!HasAvailableNetworks)
             return false;
 
-        // 用户名或密码为空。
+        // 用户名或密码为空
         if (string.IsNullOrWhiteSpace(AccountId) || string.IsNullOrWhiteSpace(Password))
         {
             ShowDisplayMessage("请输入用户名或密码");
             return false;
         }
 
-        // 没有匹配的逻辑网络。
-        if (!NetworkConnections.Any(it => it.Name == SelectedConnectionName))
+        // 没有匹配的逻辑网络
+        if (!Networks.Any(it => it.Name == SelectedNetwork?.Name))
         {
             ShowDisplayMessage("在网络列表中没有找到目标网络连接项。");
             return false;
@@ -386,15 +385,15 @@ public partial class StatusPageModel : ObservableObject
         if (IsLoading)
             return false;
 
-        // 以太网未连接。
+        // 以太网未连接
         if (!IsEthernetNetworkAdapterConnected)
             return false;
 
-        // pppoe 网络未连接。
+        // pppoe 网络未连接
         if (!IsPppoeNetworkConnected)
             return false;
 
-        // 外部控制的 pppoe 网络（仅依据条目名称判断）。
+        // 外部控制的 pppoe 网络（仅依据条目名称判断）
         if (IsPppoeConnectionManagedByOutside)
             return false;
 
@@ -420,7 +419,7 @@ public partial class StatusPageModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanDisconnect))]
-    private async Task DisConnectAsync()
+    private async Task DisconnectAsync()
     {
         if (IsConnecting)
         {
@@ -441,10 +440,12 @@ public partial class StatusPageModel : ObservableObject
         {
             await Task.Run(() => rasDialer.Connect(null, ENTRY_NAME, AccountId, Password), connectCts!.Token);
 
-            appSettings.HasSavedConnectionAuth.Value = true;
+            appSettings.HasSavedNetworkAuth.Value = true;
             appSettings.AccountId.Value = AccountId;
             appSettings.Password.Value = Password;
-            appSettings.SelectedConnectionName.Value = SelectedConnectionName;
+
+            if (SelectedNetwork is not null)
+                appSettings.SelectedNetwork.Value = SelectedNetwork;
         }
         catch (Win32Exception ex)
         {
