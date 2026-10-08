@@ -7,11 +7,11 @@ using System.Runtime.InteropServices;
 
 namespace NetSeal.Services.Network;
 
-public class NetworkConnectionService : INetworkConnectionService
+public class NetworkService : INetworkService
 {
     private readonly INetworkAdapterService adapterService;
 
-    public NetworkConnectionService(INetworkAdapterService adapterService)
+    public NetworkService(INetworkAdapterService adapterService)
     {
         this.adapterService = adapterService;
     }
@@ -20,7 +20,7 @@ public class NetworkConnectionService : INetworkConnectionService
     /// 获取系统存储过的所有逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public List<INetwork> GetAllNetworks()
+    private static List<INetwork> GetAllINetworks()
     {
         INetworkListManager networkListManager = (INetworkListManager)new NetworkListManagerClass();
         IEnumNetworks networks = networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED);
@@ -45,12 +45,30 @@ public class NetworkConnectionService : INetworkConnectionService
         return result;
     }
 
+    public List<Models.Network> GetAllNetworks()
+    {
+        var networks = GetAllINetworks();
+        var result = new List<Models.Network>();
+
+        foreach (var network in networks)
+        {
+            result.Add(new Models.Network
+            {
+                IsConnected = network.IsConnected,
+                Id = network.GetNetworkId(),
+                Name = network.GetName() ?? "未知网络",
+            });
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// 获取输入逻辑网络下的所有网络连接。
     /// </summary>
     /// <param name="network">要操作的逻辑网络</param>
     /// <returns></returns>
-    public List<INetworkConnection> GetAllNetworkConnections(INetwork network)
+    private static List<INetworkConnection> GetAllINetworkConnections(INetwork network)
     {
         IEnumNetworkConnections connections = network.GetNetworkConnections();
 
@@ -78,38 +96,46 @@ public class NetworkConnectionService : INetworkConnectionService
     /// 获取所有接入了以太网的逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public List<NetworkConnection> GetAllPhysicalAdapterNetworks()
+    public List<Models.Network> GetAllEthernetAdapterNetworks()
     {
-        var ethernets = adapterService.GetPhysicalEthernetAdapters().Where(x => x.OperationalStatus == OperationalStatus.Up);
+        return GetAllEthernetAdapterNetworks(GetAllINetworks());
+    }
 
-        if (!ethernets.Any())
+    /// <summary>
+    /// 获取所有接入了以太网的逻辑网络。
+    /// </summary>
+    /// <param name="networks">要过滤的逻辑网络</param>
+    /// <returns></returns>
+    public List<Models.Network> GetAllEthernetAdapterNetworks(List<INetwork> networks)
+    {
+        var physicalIds = new HashSet<Guid>();
+        foreach (var ethernet in adapterService.GetPhysicalEthernetAdapters())
+        {
+            if (ethernet.OperationalStatus == OperationalStatus.Up && Guid.TryParse(ethernet.Id, out var id))
+            {
+                physicalIds.Add(id);
+            }
+        }
+
+        if (physicalIds.Count == 0)
             return [];
 
-        var result = new List<NetworkConnection>();
+        var result = new List<Models.Network>();
 
-        foreach (var ethernet in ethernets)
+        foreach (var network in networks)
         {
-            if (!Guid.TryParse(ethernet.Id, out var targetAdapterId))
-                continue;
-
-            var networks = GetAllNetworks();
-            foreach (var network in networks)
+            var connections = GetAllINetworkConnections(network);
+            foreach (var connection in connections)
             {
-                var connections = GetAllNetworkConnections(network);
-                foreach (var connection in connections)
+                if (physicalIds.Contains(connection.GetAdapterId()))
                 {
-                    if (connection.GetAdapterId() == targetAdapterId)
+                    result.Add(new Models.Network
                     {
-                        result.Add(new NetworkConnection
-                        {
-                            Name = $"({ethernet.Name}) {network.GetName()}",
-                            Id = network.GetNetworkId(),
-                            IsConnected = network.IsConnected,
-                            IsPrivate = network.GetCategory() == NLM_NETWORK_CATEGORY.NLM_NETWORK_CATEGORY_PRIVATE
-                        });
-
-                        break;
-                    }
+                        Name = network.GetName() ?? "未知网络",
+                        Id = network.GetNetworkId(),
+                        IsConnected = network.IsConnected,
+                    });
+                    break;
                 }
             }
         }
