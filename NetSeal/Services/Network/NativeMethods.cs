@@ -43,7 +43,7 @@ public interface INetwork
     void GetIDsOfNames();
     void Invoke();
 
-    string GetName();
+    string? GetName();
     void SetName();
     string GetDescription();
     void SetDescription();
