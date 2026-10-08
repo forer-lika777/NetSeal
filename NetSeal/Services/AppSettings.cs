@@ -15,20 +15,15 @@ namespace NetSeal.Services;
 
 public class AppSettings : IAppSettings
 {
-    public AppSettings()
-    {
-        
-    }
-
     /// <summary>
     /// 保存是否处于登录状态的键值。
     /// </summary>
-    public IKeyItem<bool> HasSavedConnectionAuth { get; } = new KeyItem<bool>(nameof(HasSavedConnectionAuth), false);
+    public IKeyItem<bool> HasSavedNetworkAuth { get; } = new KeyItem<bool>(nameof(HasSavedNetworkAuth), false);
 
     /// <summary>
     /// 保存已选网络名称。
     /// </summary>
-    public IKeyItem<string> SelectedConnectionName { get; } = new KeyItem<string>(nameof(SelectedConnectionName), string.Empty);
+    public IKeyItem<Models.Network> SelectedNetwork { get; } = new KeyItem<Models.Network>(nameof(SelectedNetwork), new Models.Network(), Models.NetworkJsonContext.Default);
 
     /// <summary>
     /// 保存用户名的键值。

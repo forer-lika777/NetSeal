@@ -7,8 +7,8 @@ namespace NetSeal.Services;
 
 public interface IAppSettings
 {
-    public IKeyItem<bool> HasSavedConnectionAuth { get; }
-    public IKeyItem<string> SelectedConnectionName { get; }
+    public IKeyItem<bool> HasSavedNetworkAuth { get; }
+    public IKeyItem<Models.Network> SelectedNetwork { get; }
     public IKeyItem<string> AccountId { get; }
     public IKeyItem<string> Password { get; }
 }
