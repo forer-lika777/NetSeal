@@ -81,4 +81,9 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
         if (ViewModel.ConnectCommand.CanExecute(e))
             ViewModel.ConnectCommand.Execute(e);
     }
+
+    private void NetworkDesciptionButton_Click(object sender, RoutedEventArgs e)
+    {
+        NetworkDesciptionTeachingTip.IsOpen = true;
+    }
 }
