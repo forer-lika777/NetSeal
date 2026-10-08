@@ -79,7 +79,7 @@ public partial class App : Application
         services.AddSingleton<StatusPageModel>();
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<IRasDialer, RasDialer>();
-        services.AddSingleton<INetworkConnectionService, NetworkConnectionService>();
+        services.AddSingleton<INetworkService, NetworkService>();
         services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
         
