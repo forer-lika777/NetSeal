@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 	<Fragment>
-		<ComponentGroup Id="NetSealComponents">
+		<ComponentGroup Id="AppComponents">
 			<Files Include="$(var.NetSeal.Service.TargetDir)**" Directory="SERVICEDIR"/>
 			<Files Include="$(var.NetSeal.Agent.TargetDir)**" Directory="AGENTDIR"/>
 			<Files Include="$(var.NetSeal.WinUI.TargetDir)**" Directory="WINUIDIR"/>

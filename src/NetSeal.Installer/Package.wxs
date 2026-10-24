@@ -5,7 +5,7 @@
 		<MajorUpgrade DowngradeErrorMessage="已安装较新版本的 NetSeal。" />
 
 		<Feature Id="MainFeature">
-			<ComponentGroupRef Id="NetSealComponents" />
+			<ComponentGroupRef Id="AppComponents" />
 		</Feature>
 	</Package>
 </Wix>
