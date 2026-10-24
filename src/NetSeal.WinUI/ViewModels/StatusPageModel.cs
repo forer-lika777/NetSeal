@@ -1,0 +1,560 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using NetSeal.Core.Models;
+using NetSeal.Core.Services;
+using NetSeal.Core.Services.Network;
+using NetSeal.Core.Services.Ras;
+using NetSeal.Services;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Formats.Tar;
+using System.IO;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.Devices.PointOfService;
+using Windows.Media.DialProtocol;
+using Windows.System;
+
+namespace NetSeal.ViewModels;
+
+public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInformationChangedMessage>
+{
+    private const string ENTRY_NAME = "NetSeal Connection";
+
+    private readonly IAppSettings appSettings;
+    private readonly IUiDispatcher dispatcher;
+    private readonly INetworkService networkService;
+    private readonly INetworkAdapterService adapterService;
+    private readonly IRasDialer rasDialer;
+
+    private DateTime lastHandled = DateTime.MinValue;
+    private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
+    private readonly Lock locker = new();
+
+    private CancellationTokenSource? connectCts = null;
+
+    private bool initialized = false;
+
+    public StatusPageModel(IAppSettings appSettings, IUiDispatcher dispatcher, INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
+    {
+        this.appSettings = appSettings;
+        this.dispatcher = dispatcher;
+        this.networkService = networkService;
+        this.adapterService = adapterService;
+        this.rasDialer = rasDialer;
+        StrongReferenceMessenger.Default.Register<NetworkInformationChangedMessage>(this);
+        _ = InitializeAsync();
+        Windows.Networking.Connectivity.NetworkInformation.NetworkStatusChanged += NetworkInformation_NetworkStatusChanged;
+    }
+
+    [ObservableProperty]
+    public partial ObservableCollection<Network> Networks { get; set; } = [];
+
+    [ObservableProperty]
+    public partial bool IsEthernetNetworkAdapterConnected { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsOtherNetworkAdapterConnected { get; set; } = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    public partial bool IsPppoeNetworkConnected { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsInternetAccess { get; set; } = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    public partial bool HasAvailableNetworks { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsPppoeConnectionManagedByOutside { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsNetworkConnectionManagedByOutside { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsNotPppoeNetworkConnection { get; set; } = false;
+
+    [ObservableProperty]
+    public partial string ActiveNetworkAdapterName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string ActiveNetworkName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string ActivePppoeConnectionEntryName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial Network? SelectedNetwork { get; set; } = null;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    public partial int SelectedNetworkIndex { get; set; } = -1;
+
+    async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
+    {
+        if (newValue < 0)
+            return;
+
+        if (SelectedNetwork is not null && oldValue == -1)
+        {
+            var tcs = new TaskCompletionSource();
+            StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
+
+            try
+            {
+                await tcs.Task.WaitAsync(CancellationToken.None);
+            }
+            catch (OperationCanceledException)
+            {
+                SelectedNetworkIndex = oldValue;
+                return;
+            }
+        }
+
+        SelectedNetwork = Networks[(int)newValue];
+    }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    public partial bool IsConnecting { get; set; } = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    public partial bool IsLoading { get; set; } = false;
+
+    [ObservableProperty]
+    public partial string DisplayMessage { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    public partial string AccountId { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
+    public partial string Password { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool AutoConnect { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool ReconnectOnWake { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool ReconnectOnStartup { get; set; } = false;
+
+    partial void OnAutoConnectChanged(bool value) => SaveServiceSettings();
+
+    partial void OnReconnectOnWakeChanged(bool value) => SaveServiceSettings();
+
+    partial void OnReconnectOnStartupChanged(bool value) => SaveServiceSettings();
+
+    /// <summary>
+    /// 把共享配置写回 %ProgramData%\NetSeal\config\service.json，服务在下一轮轮询中读取生效。
+    /// </summary>
+    private void SaveServiceSettings()
+    {
+        try
+        {
+            var settings = ServiceSettings.Load();
+            settings.AutoConnect = AutoConnect;
+            settings.ReconnectOnWake = ReconnectOnWake;
+            settings.ReconnectOnStartup = ReconnectOnStartup;
+            settings.AccountId = AccountId;
+            settings.Save();
+        }
+        catch (Exception ex)
+        {
+            ShowDisplayMessage($"保存服务设置失败：{ex.Message}");
+        }
+    }
+
+    private async Task InitializeAsync()
+    {
+        if (initialized)
+            return;
+
+        initialized = true;
+
+        IsLoading = true;
+
+        await UpdateNetworkConnectionsStatusAsync();
+        await UpdatePppoeConnectionStatusAsync();
+
+        await dispatcher.InvokeAsync(async () =>
+        {
+            ServiceSettings settings = ServiceSettings.Load();
+
+            if (appSettings.HasSavedNetworkAuth.Value)
+            {
+                AccountId = appSettings.AccountId.Value;
+                Password = appSettings.Password.Value;
+                SelectedNetwork = appSettings.SelectedNetwork.Value;
+            }
+
+            // 这三个开关属于服务侧配置，读写都走共享文件
+            AutoConnect = settings.AutoConnect;
+            ReconnectOnWake = settings.ReconnectOnWake;
+            ReconnectOnStartup = settings.ReconnectOnStartup;
+
+            var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
+
+            if (item is not null)
+                SelectedNetworkIndex = Networks.IndexOf(item);
+
+            IsLoading = false;
+        });
+    }
+
+    public void Receive(NetworkInformationChangedMessage message)
+    {
+        NetworkInformation_NetworkStatusChanged(this);
+    }
+
+    private async void NetworkInformation_NetworkStatusChanged(object sender)
+    {
+        lock (locker)
+        {
+            var now = DateTime.UtcNow;
+            if (now - lastHandled < cooldown)
+                return;
+
+            lastHandled = now;
+        }
+
+        await UpdateNetworkConnectionsStatusAsync();
+        await UpdatePppoeConnectionStatusAsync();
+
+        await InitializeAsync();
+    }
+
+    private async Task UpdateNetworkConnectionsStatusAsync()
+    {
+        List<Network> ethernetNetworks = await networkService.GetAllEthernetAdapterNetworksAsync();
+        var adapterName = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
+        var networkName = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
+        var level = await networkService.GetConnectivityLevelAsync();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            for (int i = Networks.Count - 1; i >= 0; i--)
+            {
+                if (!ethernetNetworks.Any(c => c.Name == Networks[i].Name))
+                    Networks.RemoveAt(i);
+            }
+
+            foreach (var network in ethernetNetworks)
+            {
+                if (!Networks.Any(c => c.Name == network.Name))
+                    Networks.Add(network);
+            }
+
+            foreach (var network in Networks)
+            {
+                network.IsSelected = network.Name == SelectedNetwork?.Name;
+            }
+
+            HasAvailableNetworks = Networks.Count > 0;
+
+            // 检查是否连接到互联网
+            IsInternetAccess = level == NetworkConnectivityLevel.InternetAccess;
+
+            // 检查系统网络接入状态：可访问互联网、可访问受限的互联网（需要提供网络认证）、可访问本地局域网
+            if (level != NetworkConnectivityLevel.None)
+            {
+                ActiveNetworkAdapterName = adapterName;
+                ActiveNetworkName = networkName;
+
+                if (networkService.IsEthernetConnected)
+                {
+                    // 有接入网络的网络适配器，且该适配器是以太网
+                    IsEthernetNetworkAdapterConnected = true;
+                    IsOtherNetworkAdapterConnected = false;
+                }
+                else
+                {
+                    // 有接入网络的网络适配器，但该适配器不是以太网（可能是无线网络或虚拟网卡）
+                    IsEthernetNetworkAdapterConnected = false;
+                    IsOtherNetworkAdapterConnected = true;
+                }
+            }
+            else
+            {
+                // 没有接入网络的网络适配器
+                IsEthernetNetworkAdapterConnected = IsOtherNetworkAdapterConnected = false;
+            }
+
+            if (!appSettings.HasSavedNetworkAuth.Value)
+            {
+                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
+                return;
+            }
+
+            if (!HasAvailableNetworks)
+            {
+                ShowDisplayMessage("未找到可用的网络连接。");
+                return;
+            }
+        });
+    }
+
+    private async Task UpdatePppoeConnectionStatusAsync()
+    {
+        var connection = await rasDialer.GetActiveRasConnectionAsync();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // 当前系统接入了以太网连接（可能不是 pppoe 连接）
+            if (connection is not null)
+            {
+                // 有 pppoe 连接
+                IsPppoeNetworkConnected = true;
+                ActivePppoeConnectionEntryName = connection.EntryName;
+                // 此 pppoe 连接是当前应用程序管理的 pppoe 连接
+                IsPppoeConnectionManagedByOutside = ActivePppoeConnectionEntryName != ENTRY_NAME;
+                // pppoe 连接一定使用以太网适配器
+                IsEthernetNetworkAdapterConnected = true;
+                IsOtherNetworkAdapterConnected= false;
+            }
+            else
+            {
+                // 无 pppoe 连接
+                IsPppoeNetworkConnected = false;
+                ActivePppoeConnectionEntryName = string.Empty;
+                // 此 pppoe 连接不是当前应用程序管理的 pppoe 连接
+                IsPppoeConnectionManagedByOutside = false;
+            }
+
+            // 有 pppoe 连接，且此连接是当前应用程序管理的 pppoe 连接，表明系统的网络连接由当前应用程序管理
+            IsNetworkConnectionManagedByOutside = !(IsPppoeNetworkConnected && !IsPppoeConnectionManagedByOutside);
+
+            // 当前网络已接入互联网，但是没有 pppoe 连接，表明网络是非 pppoe 类型（例如直接接入的家庭宽带网络）
+            IsNotPppoeNetworkConnection = IsInternetAccess && !IsPppoeNetworkConnected;
+        });
+    }
+
+    private bool CanConnect()
+    {
+        if (IsLoading)
+            return false;
+
+        // 以太网未连接
+        if (!IsEthernetNetworkAdapterConnected)
+            return false;
+
+        // pppoe 宽带连接已连接
+        if (IsPppoeNetworkConnected)
+            return false;
+
+        // 有可用网络
+        if (!HasAvailableNetworks)
+            return false;
+
+        if (IsConnecting)
+            return false;
+
+        // 用户名或密码为空
+        if (string.IsNullOrWhiteSpace(AccountId) || string.IsNullOrWhiteSpace(Password))
+        {
+            ShowDisplayMessage("请输入用户名或密码");
+            return false;
+        }
+
+        // 没有匹配的逻辑网络
+        if (!Networks.Any(it => it.Name == SelectedNetwork?.Name))
+        {
+            ShowDisplayMessage("在网络列表中没有找到目标网络连接项。");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool CanDisconnect()
+    {
+        if (IsLoading)
+            return false;
+
+        // 以太网未连接
+        if (!IsEthernetNetworkAdapterConnected)
+            return false;
+
+        // pppoe 网络未连接
+        if (!IsPppoeNetworkConnected)
+            return false;
+
+        // 外部控制的 pppoe 网络（仅依据条目名称判断）
+        if (IsPppoeConnectionManagedByOutside)
+            return false;
+
+        if (IsConnecting)
+            return true;
+
+        return true;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConnect))]
+    private async Task ConnectAsync()
+    {
+        IsConnecting = true;
+
+        var credObj = new { user = AccountId, password = Password };
+        string tempFile = Path.Combine(Path.GetTempPath(), $"netseal_cred_{Guid.NewGuid():N}.json");
+        File.WriteAllBytes(tempFile, JsonSerializer.SerializeToUtf8Bytes(credObj));
+
+        string agentPath = ResolveAgentPath();
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = agentPath,
+            Arguments = $"--set-cred \"{tempFile}\"",
+            UseShellExecute = true,
+            Verb = "runas"
+        };
+
+        try
+        {
+            var process = Process.Start(psi);
+            process?.WaitForExit();
+
+            if (process?.ExitCode == 0)
+            {
+                ShowDisplayMessage("凭据保存成功。");
+            }
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // 用户点了取消 UAC
+            File.Delete(tempFile);
+            // UI 提示“已取消保存”
+        }
+        catch (Exception ex)
+        {
+            File.Delete(tempFile);
+            ShowDisplayMessage("凭据保存失败。");
+        }
+
+        await rasDialer.RasCreateEntryAsync(null, ENTRY_NAME, AccountId, Password);
+
+        await ExcuteConnectTaskAsync();
+
+        IsConnecting = false;
+        IsPppoeNetworkConnected = true;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDisconnect))]
+    private async Task DisconnectAsync()
+    {
+        if (IsConnecting)
+        {
+            CancelCts(ref connectCts);
+            return;
+        }
+
+        await ExcuteDisconnectTaskAsync();
+
+        IsConnecting = false;
+        IsPppoeNetworkConnected = false;
+    }
+
+    private async Task ExcuteConnectTaskAsync()
+    {
+        ResetCts(ref connectCts);
+
+        try
+        {
+            await rasDialer.RasConnectAsync(null, ENTRY_NAME, AccountId, Password, connectCts!.Token);
+
+            appSettings.HasSavedNetworkAuth.Value = true;
+            appSettings.AccountId.Value = AccountId;
+            appSettings.Password.Value = Password;
+
+            if (SelectedNetwork is not null)
+                appSettings.SelectedNetwork.Value = SelectedNetwork;
+        }
+        catch (Win32Exception ex)
+        {
+            await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+        }
+    }
+
+    private async Task ExcuteDisconnectTaskAsync()
+    {
+        try
+        {
+            await rasDialer.RasDisconnectAsync(null, ENTRY_NAME);
+        }
+        catch (Win32Exception ex)
+        {
+            await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+        }
+    }
+
+    private void ShowDisplayMessage(Exception ex)
+    {
+        Debug.WriteLine(ex);
+        DisplayMessage = ex.Message;
+    }
+
+    private void ShowDisplayMessage(string message)
+    {
+        Debug.WriteLine(message);
+        DisplayMessage = message;
+    }
+
+    private static void ResetCts(ref CancellationTokenSource? cts, CancellationTokenSource? ctsToUse = null)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = ctsToUse ?? new CancellationTokenSource();
+    }
+
+    private static void CancelCts(ref CancellationTokenSource? cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
+    }
+
+    /// <summary>
+    /// 定位 NetSeal.Agent.exe。
+    /// <para>安装后布局：&lt;安装目录&gt;\Agent\NetSeal.Agent.exe</para>
+    /// <para>开发期布局：仓库根目录下的 NetSeal.Agent\bin\&lt;配置&gt;\net10.0\NetSeal.Agent.exe</para>
+    /// </summary>
+    private static string ResolveAgentPath()
+    {
+        string installed = Path.Combine(AppContext.BaseDirectory, "Agent", "NetSeal.Agent.exe");
+        if (File.Exists(installed))
+            return installed;
+
+        // 开发期：从输出目录向上回溯，寻找仓库中的 NetSeal.Agent 项目输出
+        string? dir = AppContext.BaseDirectory;
+        for (int depth = 0; depth < 6 && !string.IsNullOrEmpty(dir); depth++)
+        {
+            foreach (var configuration in new[] { "Debug", "Release" })
+            {
+                string candidate = Path.Combine(dir, "NetSeal.Agent", "bin", configuration, "net10.0", "NetSeal.Agent.exe");
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+
+            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
+        }
+
+        // 找不到时返回安装布局路径，让调用方得到明确的“文件不存在”错误
+        return installed;
+    }
+}

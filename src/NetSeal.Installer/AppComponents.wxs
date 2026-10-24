@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+	<Fragment>
+		<ComponentGroup Id="NetSealComponents">
+			<Files Include="$(var.NetSeal.Service.TargetDir)**" Directory="SERVICEDIR"/>
+			<Files Include="$(var.NetSeal.Agent.TargetDir)**" Directory="AGENTDIR"/>
+			<Files Include="$(var.NetSeal.WinUI.TargetDir)**" Directory="WINUIDIR"/>
+		</ComponentGroup>
+		<Component Directory="SERVICEDIR" Guid="*">
+			<File Id="ServiceExe" Source="$(var.NetSeal.Service.TargetDir)NetSeal.Service.exe" KeyPath="yes" />
+			<ServiceInstall Id="InstallNetSealService" Name="NetSeal" DisplayName="NetSeal Service" Description="自动拨号服务" Type="ownProcess" Start="auto" Account="LocalSystem" ErrorControl="normal" />
+			<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" />
+		</Component>
+		<Component Directory="WINUIDIR" Guid="*">
+			<File Id="WinUIExe" Source="$(var.NetSeal.WinUI.TargetDir)NetSeal.WinUI.exe" KeyPath="yes" />
+			<Shortcut Id="WinUIShortcut" Directory="ProgramMenuFolder" Name="NetSeal" Target="[WINUIDIR]NetSeal.WinUI.exe" WorkingDirectory="WINUIDIR" />
+		</Component>
+	</Fragment>
+</Wix>
