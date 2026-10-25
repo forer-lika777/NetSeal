@@ -122,4 +122,9 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
     {
         throw new NotImplementedException();
     }
+
+    public Task RasSetCredentialsAsync(string? phoneBook, string entryName, string username, string password)
+    {
+        throw new NotImplementedException();
+    }
 }
