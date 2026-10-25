@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
@@ -6,7 +6,6 @@ using System.Security.Principal;
 
 namespace NetSeal.Agent;
 
-[SupportedOSPlatform("windows")]
 public partial class Program
 {
     [LibraryImport("user32.dll", EntryPoint = "MessageBoxW", StringMarshalling = StringMarshalling.Utf16)]
