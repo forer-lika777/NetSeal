@@ -11,6 +11,12 @@ namespace NetSeal.Core.Services.Ras;
 public interface IRasDialer
 {
     /// <summary>
+    /// 获取当前活跃状态的连接。
+    /// </summary>
+    /// <returns></returns>
+    public Task<RasConnection?> GetActiveRasConnectionAsync();
+
+    /// <summary>
     /// 在指定电话簿中创建条目。
     /// 当条目存在时，会跳过创建。
     /// </summary>
@@ -46,10 +52,23 @@ public interface IRasDialer
     public Task RasRemoveEntryAsync(string? phoneBook, string entryName);
 
     /// <summary>
-    /// 获取当前活跃状态的连接。
+    /// 设置指定电话簿中指定条目的凭据。
     /// </summary>
+    /// <param name="phoneBook">
+    /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
+    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// </param>
+    /// <param name="entryName">
+    /// 条目名称。
+    /// </param>
+    /// <param name="username">
+    /// 提供给网络运营商的用户名。
+    /// </param>
+    /// <param name="password">
+    /// 提供给网络运营商的密码。
+    /// </param>
     /// <returns></returns>
-    public Task<RasConnection?> GetActiveRasConnectionAsync();
+    public Task RasSetCredentialsAsync(string? phoneBook, string entryName, string username, string password);
 
     /// <summary>
     /// 连接指定电话簿中的指定条目。

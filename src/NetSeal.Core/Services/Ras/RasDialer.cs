@@ -744,6 +744,22 @@ public class RasDialer : IRasDialer
         return result;
     }
 
+    public void RasSetCredentials(string? phoneBook, string entryName, string username, string password)
+    {
+        var cred = new RASCREDENTIALS
+        {
+            size = Marshal.SizeOf<RASCREDENTIALS>(),
+            options = RASCM.UserName | RASCM.Password,
+            userName = username ?? "",
+            password = password ?? "",
+            domain = ""
+        };
+
+        var ret = RasSetCredentials(phoneBook, entryName, in cred, false);
+        if (ret != ERROR_SUCCESS)
+            throw new Win32Exception((int)ret, $"设置凭据失败。错误信息：{GetErrorString(ret)}");
+    }
+
     /// <summary>
     /// 创建 Entry 条目。
     /// </summary>
@@ -886,6 +902,11 @@ public class RasDialer : IRasDialer
     public async Task RasRemoveEntryAsync(string? phoneBook, string entryName)
     {
         await Task.Run(() => RemoveEntry(phoneBook, entryName));
+    }
+
+    public async Task RasSetCredentialsAsync(string? phoneBook, string entryName, string username, string password)
+    {
+        await Task.Run(() => RasSetCredentials(phoneBook, entryName, username, password));
     }
 
     public async Task<RasConnection?> GetActiveRasConnectionAsync()
