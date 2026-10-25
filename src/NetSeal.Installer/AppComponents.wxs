@@ -1,19 +1,39 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 	<Fragment>
 		<ComponentGroup Id="AppComponents">
-			<Files Include="$(var.NetSeal.Service.TargetDir)**" Directory="SERVICEDIR"/>
-			<Files Include="$(var.NetSeal.Agent.TargetDir)**" Directory="AGENTDIR"/>
-			<Files Include="$(var.NetSeal.WinUI.TargetDir)**" Directory="WINUIDIR"/>
+			<Files Include="!(bindpath.NetSeal.Service)\**" Directory="SERVICEDIR">
+				<Exclude Files="!(bindpath.NetSeal.Service)\NetSeal.Service.exe" />
+				<Exclude Files="!(bindpath.NetSeal.Service)\*.pdb" />
+			</Files>
+			<Component Directory="SERVICEDIR" Guid="*">
+				<File Id="ServiceExe" Source="!(bindpath.NetSeal.Service)\NetSeal.Service.exe" KeyPath="yes" />
+				<ServiceInstall Id="InstallNetSealService" Name="NetSeal" DisplayName="NetSeal Service" Description="Auto dial service" Type="ownProcess" Start="auto" Account="LocalSystem" ErrorControl="normal">
+					<util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="restart" RestartServiceDelayInSeconds="10" />
+				</ServiceInstall>
+				<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" />
+			</Component>
+
+			<Files Include="!(bindpath.NetSeal.Agent)\**" Directory="AGENTDIR">
+				<Exclude Files="!(bindpath.NetSeal.Agent)\NetSeal.Agent.exe" />
+				<Exclude Files="!(bindpath.NetSeal.Agent)\*.pdb" />
+			</Files>
+			<Component Directory="AGENTDIR" Guid="*">
+				<File Id="AgentExe" Source="!(bindpath.NetSeal.Agent)\NetSeal.Agent.exe" KeyPath="yes" />
+			</Component>
+
+			<Files Include="!(bindpath.NetSeal.WinUI)\**" Directory="WINUIDIR">
+				<Exclude Files="!(bindpath.NetSeal.WinUI)\*.pdb" />
+				<Exclude Files="!(bindpath.NetSeal.WinUI)\NetSeal.WinUI.exe" />
+			</Files>
+			<Component Directory="WINUIDIR" Guid="*">
+				<File Id="WinUIExe" Source="!(bindpath.NetSeal.WinUI)\NetSeal.WinUI.exe" KeyPath="yes" />
+			</Component>
+			<Component Directory="WINUIDIR" Guid="*">
+				<Shortcut Id="WinUIShortcut" Directory="ProgramMenuFolder" Name="NetSeal" Target="[WINUIDIR]NetSeal.WinUI.exe" WorkingDirectory="WINUIDIR" />
+				<RegistryValue Root="HKCU" Key="Software\NetSeal" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+			</Component>
 		</ComponentGroup>
-		<Component Directory="SERVICEDIR" Guid="*">
-			<File Id="ServiceExe" Source="$(var.NetSeal.Service.TargetDir)NetSeal.Service.exe" KeyPath="yes" />
-			<ServiceInstall Id="InstallNetSealService" Name="NetSeal" DisplayName="NetSeal Service" Description="自动拨号服务" Type="ownProcess" Start="auto" Account="LocalSystem" ErrorControl="normal" />
-			<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" />
-		</Component>
-		<Component Directory="WINUIDIR" Guid="*">
-			<File Id="WinUIExe" Source="$(var.NetSeal.WinUI.TargetDir)NetSeal.WinUI.exe" KeyPath="yes" />
-			<Shortcut Id="WinUIShortcut" Directory="ProgramMenuFolder" Name="NetSeal" Target="[WINUIDIR]NetSeal.WinUI.exe" WorkingDirectory="WINUIDIR" />
-		</Component>
 	</Fragment>
 </Wix>
