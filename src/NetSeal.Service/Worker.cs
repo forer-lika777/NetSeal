@@ -1,4 +1,4 @@
-using NetSeal.Core.Services;
+﻿using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Ras;
 using System.ComponentModel;
 using System.Runtime.Versioning;
@@ -7,7 +7,6 @@ using System.Text.Json;
 
 namespace NetSeal.Service;
 
-[SupportedOSPlatform("windows")]
 public class Worker : BackgroundService
 {
     private const string ENTRY_NAME = "NetSeal Connection";
@@ -25,11 +24,15 @@ public class Worker : BackgroundService
 
     private readonly ILogger<Worker> logger;
     private readonly IRasDialer rasDialer;
+    private readonly IAppSettings settings;
+    private readonly ServiceState serviceState;
 
-    public Worker(ILogger<Worker> logger, IRasDialer rasDialer)
+    public Worker(ILogger<Worker> logger, IRasDialer rasDialer, IAppSettings settings, ServiceState serviceState)
     {
         this.logger = logger;
         this.rasDialer = rasDialer;
+        this.settings = settings;
+        this.serviceState = serviceState;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -44,7 +47,7 @@ public class Worker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(PollInterval, stoppingToken);
+            await serviceState.WaitForReloadAsync(PollInterval, stoppingToken);
 
             DateTime now = DateTime.UtcNow;
             bool resumedFromSleep = now - lastTick > SleepGapThreshold;
@@ -55,8 +58,6 @@ public class Worker : BackgroundService
 
             try
             {
-                ServiceSettings settings = ServiceSettings.Load();
-
                 if (await rasDialer.GetActiveRasConnectionAsync() is not null)
                 {
                     serviceJustStarted = false;
@@ -64,29 +65,21 @@ public class Worker : BackgroundService
                 }
 
                 bool shouldDial =
-                    (serviceJustStarted && settings.ReconnectOnStartup) ||
-                    (resumedFromSleep && settings.ReconnectOnWake) ||
-                    settings.AutoConnect;
+                    (serviceJustStarted && await settings.AutoConnectOnStartup.GetValueAsync()) ||
+                    (resumedFromSleep && await settings.ReconnectOnWake.GetValueAsync()) ||
+                    await settings.AutoConnectOnStartup.GetValueAsync();
 
                 serviceJustStarted = false;
 
                 if (!shouldDial)
                     continue;
 
-                var credentials = LoadCredentials();
-                if (credentials is null)
-                {
-                    logger.LogWarning("未找到凭据，等待下一轮重试。");
-                    continue;
-                }
-
-                logger.LogInformation("准备拨号：{User}", credentials.Value.User);
 
                 await rasDialer.RasConnectAsync(
                     null,
                     ENTRY_NAME,
-                    credentials.Value.User,
-                    credentials.Value.Password,
+                    "",
+                    "",
                     stoppingToken);
 
                 logger.LogInformation("拨号连接成功。");
@@ -107,49 +100,5 @@ public class Worker : BackgroundService
         }
 
         logger.LogInformation("NetSeal 服务已停止。");
-    }
-
-    /// <summary>
-    /// 读取由 <c>NetSeal.Agent</c> 以 LocalMachine 作用域加密保存的凭据。
-    /// </summary>
-    private (string User, string Password)? LoadCredentials()
-    {
-        string root = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "NetSeal");
-
-        string file = Path.Combine(root, "secrets", "credentials.dat");
-
-        // 兼容旧版本直接放在 NetSeal 根目录的凭据
-        if (!File.Exists(file))
-        {
-            string legacy = Path.Combine(root, "credentials.dat");
-            if (File.Exists(legacy))
-                file = legacy;
-            else
-                return null;
-        }
-
-        try
-        {
-            byte[] cipher = File.ReadAllBytes(file);
-            byte[] plain = ProtectedData.Unprotect(cipher, null, DataProtectionScope.LocalMachine);
-
-            using var doc = JsonDocument.Parse(plain);
-            string user = doc.RootElement.GetProperty("user").GetString() ?? "";
-            string pass = doc.RootElement.GetProperty("password").GetString() ?? "";
-
-            return (user, pass);
-        }
-        catch (CryptographicException ex)
-        {
-            logger.LogError(ex, "凭据解密失败，文件可能损坏或 DPAPI 密钥不匹配。");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "读取凭据失败。");
-            return null;
-        }
     }
 }
