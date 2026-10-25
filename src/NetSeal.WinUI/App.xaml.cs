@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using H.NotifyIcon;
 using H.NotifyIcon.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -13,6 +13,14 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
+using NetSeal.Core.Ipc;
+using NetSeal.Core.Services;
+using NetSeal.Core.Services.AppSetting;
+using NetSeal.Core.Services.Network;
+using NetSeal.Core.Services.Pipe;
+using NetSeal.Core.Services.Ras;
+using NetSeal.Services;
+using NetSeal.ViewModels;
 using NetSeal.WinUI.Pages;
 using System;
 using System.Collections.Generic;
@@ -24,11 +32,6 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using NetSeal.ViewModels;
-using NetSeal.Services;
-using NetSeal.Core.Services.Network;
-using NetSeal.Core.Services.Ras;
-using NetSeal.Core.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -79,6 +82,8 @@ public partial class App : Application
 
         services.AddSingleton<StatusPageModel>();
         services.AddSingleton<IAppSettings, AppSettings>();
+        services.AddSingleton<ISettingsStore, RemoteSettingsStore>();
+        services.AddSingleton<PipeClient>();
 
         if (false)
         {

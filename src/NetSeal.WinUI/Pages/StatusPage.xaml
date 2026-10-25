@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="NetSeal.WinUI.Pages.StatusPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -142,13 +142,13 @@
                                 </StackPanel>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="自动连接拨号网络" Description="网络可用时由后台服务自动为你连接拨号网络">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnect, Mode=TwoWay}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}"/>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="唤醒后重新连接" Description="系统从睡眠恢复后立即通过后台服务重新拨号">
                                 <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnWake, Mode=TwoWay}"/>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="启动后重新连接" Description="后台服务启动或开机自启后立即重新拨号">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnStartup, Mode=TwoWay}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}"/>
                             </controls:SettingsCard>
                             <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
                         </StackPanel>

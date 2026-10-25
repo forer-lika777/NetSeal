@@ -1,8 +1,8 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
-using NetSeal.Core.Services;
+using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using NetSeal.Services;
@@ -30,7 +30,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 {
     private const string ENTRY_NAME = "NetSeal Connection";
 
-    private readonly IAppSettings appSettings;
+    private readonly IAppSettings settings;
     private readonly IUiDispatcher dispatcher;
     private readonly INetworkService networkService;
     private readonly INetworkAdapterService adapterService;
@@ -46,7 +46,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     public StatusPageModel(IAppSettings appSettings, IUiDispatcher dispatcher, INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
     {
-        this.appSettings = appSettings;
+        this.settings = appSettings;
         this.dispatcher = dispatcher;
         this.networkService = networkService;
         this.adapterService = adapterService;
@@ -148,39 +148,77 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     public partial string Password { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial bool AutoConnect { get; set; } = false;
+    public partial bool AutoConnectOnStartup { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsSavingAutoConnectOnStartup { get; set; } = false;
+
+    async partial void OnAutoConnectOnStartupChanged(bool value)
+    {
+        IsSavingAutoConnectOnStartup = true;
+
+        try
+        {
+            await settings.AutoConnectOnStartup.SetValueAsync(value);
+        }
+        catch (Exception ex)
+        {
+
+        }
+        finally
+        {
+            IsSavingAutoConnectOnStartup = false;
+        }
+    }
 
     [ObservableProperty]
     public partial bool ReconnectOnWake { get; set; } = false;
 
     [ObservableProperty]
-    public partial bool ReconnectOnStartup { get; set; } = false;
+    public partial bool IsSavingReconnectOnWake { get; set; } = false;
 
-    partial void OnAutoConnectChanged(bool value) => SaveServiceSettings();
-
-    partial void OnReconnectOnWakeChanged(bool value) => SaveServiceSettings();
-
-    partial void OnReconnectOnStartupChanged(bool value) => SaveServiceSettings();
-
-    /// <summary>
-    /// 把共享配置写回 %ProgramData%\NetSeal\config\service.json，服务在下一轮轮询中读取生效。
-    /// </summary>
-    private void SaveServiceSettings()
+    async partial void OnReconnectOnWakeChanged(bool value)
     {
+        IsSavingReconnectOnWake = true;
+
         try
         {
-            var settings = ServiceSettings.Load();
-            settings.AutoConnect = AutoConnect;
-            settings.ReconnectOnWake = ReconnectOnWake;
-            settings.ReconnectOnStartup = ReconnectOnStartup;
-            settings.AccountId = AccountId;
-            settings.Save();
+            await settings.ReconnectOnWake.SetValueAsync(value);
         }
         catch (Exception ex)
         {
-            ShowDisplayMessage($"保存服务设置失败：{ex.Message}");
+
+        }
+        finally
+        {
+            IsSavingReconnectOnWake = false;
         }
     }
+
+    [ObservableProperty]
+    public partial bool ReconnectOnDisconnect { get; set; } = false;
+
+    [ObservableProperty]
+    public partial bool IsSavingReconnectOnDisconnect { get; set; } = false;
+
+    async partial void OnReconnectOnDisconnectChanged(bool value)
+    {
+        IsSavingReconnectOnDisconnect = true;
+
+        try
+        {
+            await settings.ReconnectOnDisconnect.SetValueAsync(value);
+        }
+        catch (Exception ex)
+        {
+
+        }
+        finally
+        {
+            IsSavingReconnectOnDisconnect = false;
+        }
+    }
+
 
     private async Task InitializeAsync()
     {
@@ -196,19 +234,17 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
         await dispatcher.InvokeAsync(async () =>
         {
-            ServiceSettings settings = ServiceSettings.Load();
-
-            if (appSettings.HasSavedNetworkAuth.Value)
+            if (await settings.HasSavedNetworkAuth.GetValueAsync())
             {
-                AccountId = appSettings.AccountId.Value;
-                Password = appSettings.Password.Value;
-                SelectedNetwork = appSettings.SelectedNetwork.Value;
+                //AccountId = appSettings.AccountId.Value;
+                //Password = appSettings.Password.Value;
+                SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
             }
 
             // 这三个开关属于服务侧配置，读写都走共享文件
-            AutoConnect = settings.AutoConnect;
-            ReconnectOnWake = settings.ReconnectOnWake;
-            ReconnectOnStartup = settings.ReconnectOnStartup;
+            AutoConnectOnStartup = await settings.AutoConnectOnStartup.GetValueAsync();
+            ReconnectOnWake = await settings.ReconnectOnWake.GetValueAsync();
+            ReconnectOnDisconnect = await settings.ReconnectOnDisconnect.GetValueAsync();
 
             var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
 
@@ -247,6 +283,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         var adapterName = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
         var networkName = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
         var level = await networkService.GetConnectivityLevelAsync();
+        bool hasSavedNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -297,7 +334,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
                 IsEthernetNetworkAdapterConnected = IsOtherNetworkAdapterConnected = false;
             }
 
-            if (!appSettings.HasSavedNetworkAuth.Value)
+            if (!hasSavedNetworkAuth)
             {
                 ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
                 return;
@@ -406,46 +443,52 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         return true;
     }
 
+    [RelayCommand]
+    private async Task SetCredentialsAsync()
+    {
+        await rasDialer.RasSetCredentialsAsync(null, ENTRY_NAME, AccountId, Password);
+    }
+
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task ConnectAsync()
     {
         IsConnecting = true;
 
-        var credObj = new { user = AccountId, password = Password };
-        string tempFile = Path.Combine(Path.GetTempPath(), $"netseal_cred_{Guid.NewGuid():N}.json");
-        File.WriteAllBytes(tempFile, JsonSerializer.SerializeToUtf8Bytes(credObj));
+        //var credObj = new { user = AccountId, password = Password };
+        //string tempFile = Path.Combine(Path.GetTempPath(), $"netseal_cred_{Guid.NewGuid():N}.json");
+        //File.WriteAllBytes(tempFile, JsonSerializer.SerializeToUtf8Bytes(credObj));
 
-        string agentPath = ResolveAgentPath();
+        //string agentPath = ResolveAgentPath();
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = agentPath,
-            Arguments = $"--set-cred \"{tempFile}\"",
-            UseShellExecute = true,
-            Verb = "runas"
-        };
+        //var psi = new ProcessStartInfo
+        //{
+        //    FileName = agentPath,
+        //    Arguments = $"--set-cred \"{tempFile}\"",
+        //    UseShellExecute = true,
+        //    Verb = "runas"
+        //};
 
-        try
-        {
-            var process = Process.Start(psi);
-            process?.WaitForExit();
+        //try
+        //{
+        //    var process = Process.Start(psi);
+        //    process?.WaitForExit();
 
-            if (process?.ExitCode == 0)
-            {
-                ShowDisplayMessage("凭据保存成功。");
-            }
-        }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        {
-            // 用户点了取消 UAC
-            File.Delete(tempFile);
-            // UI 提示“已取消保存”
-        }
-        catch (Exception ex)
-        {
-            File.Delete(tempFile);
-            ShowDisplayMessage("凭据保存失败。");
-        }
+        //    if (process?.ExitCode == 0)
+        //    {
+        //        ShowDisplayMessage("凭据保存成功。");
+        //    }
+        //}
+        //catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        //{
+        //    // 用户点了取消 UAC
+        //    File.Delete(tempFile);
+        //    // UI 提示“已取消保存”
+        //}
+        //catch (Exception ex)
+        //{
+        //    File.Delete(tempFile);
+        //    ShowDisplayMessage("凭据保存失败。");
+        //}
 
         await rasDialer.RasCreateEntryAsync(null, ENTRY_NAME, AccountId, Password);
 
@@ -478,12 +521,12 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         {
             await rasDialer.RasConnectAsync(null, ENTRY_NAME, AccountId, Password, connectCts!.Token);
 
-            appSettings.HasSavedNetworkAuth.Value = true;
-            appSettings.AccountId.Value = AccountId;
-            appSettings.Password.Value = Password;
+            await settings.HasSavedNetworkAuth.SetValueAsync(true);
+            //appSettings.AccountId.set
+            //appSettings.Password.Value = Password;
 
             if (SelectedNetwork is not null)
-                appSettings.SelectedNetwork.Value = SelectedNetwork;
+                await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
         }
         catch (Win32Exception ex)
         {
