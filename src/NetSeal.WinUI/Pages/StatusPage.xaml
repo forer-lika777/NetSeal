@@ -47,7 +47,7 @@
                                           SelectedIndex="{x:Bind ViewModel.SelectedNetworkIndex, Mode=TwoWay}"
                                           SelectionMode="Single" Height="700" VerticalAlignment="Stretch">
                                     <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:Network">
+                                        <DataTemplate x:DataType="models:NetworkItem">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition/>

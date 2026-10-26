@@ -66,7 +66,7 @@ public class NetworkService : INetworkService
         return adapters.Select(a => a.Name).ToList();
     }
 
-    public async Task<List<Models.Network>> GetActiveNetworksAsync()
+    public async Task<List<NetworkItem>> GetActiveNetworksAsync()
     {
         return (await GetAllNetworksAsync()).Where(x => x.IsConnected).ToList();
     }
@@ -106,14 +106,14 @@ public class NetworkService : INetworkService
         return result;
     }
 
-    public async Task<List<Models.Network>> GetAllNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllNetworksAsync()
     {
         var networks = await Task.Run(() => GetAllINetworks());
-        var result = new List<Models.Network>();
+        var result = new List<NetworkItem>();
 
         foreach (var network in networks)
         {
-            result.Add(new Models.Network
+            result.Add(new NetworkItem
             {
                 IsConnected = network.IsConnected,
                 Id = network.GetNetworkId(),
@@ -157,7 +157,7 @@ public class NetworkService : INetworkService
     /// 获取所有接入了以太网的逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public List<Models.Network> GetAllEthernetAdapterNetworks()
+    public List<NetworkItem> GetAllEthernetAdapterNetworks()
     {
         return GetAllEthernetAdapterNetworks(GetAllINetworks());
     }
@@ -167,7 +167,7 @@ public class NetworkService : INetworkService
     /// </summary>
     /// <param name="networks">要过滤的逻辑网络</param>
     /// <returns></returns>
-    private List<Models.Network> GetAllEthernetAdapterNetworks(List<INetwork> networks)
+    private List<NetworkItem> GetAllEthernetAdapterNetworks(List<INetwork> networks)
     {
         var physicalIds = new HashSet<Guid>();
         foreach (var ethernet in adapterService.GetActivePhysicalEthernetAdapters())
@@ -181,7 +181,7 @@ public class NetworkService : INetworkService
         if (physicalIds.Count == 0)
             return [];
 
-        var result = new List<Models.Network>();
+        var result = new List<NetworkItem>();
 
         foreach (var network in networks)
         {
@@ -190,7 +190,7 @@ public class NetworkService : INetworkService
             {
                 if (physicalIds.Contains(connection.GetAdapterId()))
                 {
-                    result.Add(new Models.Network
+                    result.Add(new NetworkItem
                     {
                         Name = network.GetName() ?? "未知网络",
                         Id = network.GetNetworkId(),
@@ -204,7 +204,7 @@ public class NetworkService : INetworkService
         return result;
     }
 
-    public async Task<List<Models.Network>> GetAllEthernetAdapterNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllEthernetAdapterNetworksAsync()
     {
         return await Task.Run(() => GetAllEthernetAdapterNetworks());
     }

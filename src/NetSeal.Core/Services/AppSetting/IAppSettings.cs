@@ -9,7 +9,7 @@ namespace NetSeal.Core.Services.AppSetting;
 public interface IAppSettings
 {
     public IKeyItem<bool> HasSavedNetworkAuth { get; }
-    public IKeyItem<Models.Network> SelectedNetwork { get; }
+    public IKeyItem<NetworkItem> SelectedNetwork { get; }
     public IKeyItem<bool> ReconnectOnDisconnect { get; }
     public IKeyItem<bool> ReconnectOnWake { get; }
     public IKeyItem<bool> AutoConnectOnStartup { get; }

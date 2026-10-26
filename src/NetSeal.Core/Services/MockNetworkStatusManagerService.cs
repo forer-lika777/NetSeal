@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
+using NetSeal.Core.Models.Network;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System;
@@ -40,9 +41,9 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
         return ["网络"];
     }
 
-    public async Task<List<Models.Network>> GetActiveNetworksAsync()
+    public async Task<List<NetworkItem>> GetActiveNetworksAsync()
     {
-        return [new Models.Network { Name = "网络", IsConnected = true }];
+        return [new NetworkItem { Name = "网络", IsConnected = true }];
     }
 
     public List<NetworkAdapter> GetActivePhysicalEthernetAdapters()
@@ -56,17 +57,17 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
         return rasConnection;
     }
 
-    public async Task<List<Models.Network>> GetAllEthernetAdapterNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllEthernetAdapterNetworksAsync()
     {
         await Task.Delay(1000);
-        List<Models.Network> results = [new Models.Network { Name = "网络", IsConnected = true}];
+        List<NetworkItem> results = [new NetworkItem { Name = "网络", IsConnected = true }];
         return results;
     }
 
-    public async Task<List<Models.Network>> GetAllNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllNetworksAsync()
     {
         await Task.Delay(1000);
-        List<Models.Network> results = [new Models.Network { Name = "网络", IsConnected = true }];
+        List<NetworkItem> results = [new NetworkItem { Name = "网络", IsConnected = true }];
         return results;
     }
 

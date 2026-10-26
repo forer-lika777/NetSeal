@@ -1,4 +1,5 @@
 ﻿using NetSeal.Core.Ipc;
+using NetSeal.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -23,9 +24,9 @@ public class AppSettings(ISettingsStore settingsStore) : IAppSettings
     public IKeyItem<bool> HasSavedNetworkAuth { get; } = new KeyItem<bool>(settingsStore, nameof(HasSavedNetworkAuth), false);
 
     /// <summary>
-    /// 保存已选网络名称。
+    /// 保存已选网络。
     /// </summary>
-    public IKeyItem<Models.Network> SelectedNetwork { get; } = new KeyItem<Models.Network>(settingsStore, nameof(SelectedNetwork), new Models.Network(), Core.Models.NetworkJsonContext.Default);
+    public IKeyItem<NetworkItem> SelectedNetwork { get; } = new KeyItem<NetworkItem>(settingsStore, nameof(SelectedNetwork), new NetworkItem(), NetworkItemJsonContext.Default);
 
     /// <summary>
     /// 断连时是否自动重新连接。

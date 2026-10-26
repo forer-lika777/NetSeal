@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace NetSeal.Core.Models;
 
-public partial class Network : ObservableObject
+public partial class NetworkItem : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
     public Guid Id { get; set; }
@@ -18,8 +18,8 @@ public partial class Network : ObservableObject
     public partial bool IsSelected { get; set; } = false;
 }
 
-[JsonSerializable(typeof(Network))]
-public partial class NetworkJsonContext : JsonSerializerContext
+[JsonSerializable(typeof(NetworkItem))]
+public partial class NetworkItemJsonContext : JsonSerializerContext
 {
 
 }

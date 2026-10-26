@@ -57,7 +57,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     }
 
     [ObservableProperty]
-    public partial ObservableCollection<Network> Networks { get; set; } = [];
+    public partial ObservableCollection<NetworkItem> Networks { get; set; } = [];
 
     [ObservableProperty]
     public partial bool IsEthernetNetworkAdapterConnected { get; set; } = false;
@@ -96,7 +96,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     public partial string ActivePppoeConnectionEntryName { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial Network? SelectedNetwork { get; set; } = null;
+    public partial NetworkItem? SelectedNetwork { get; set; } = null;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
@@ -279,7 +279,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     private async Task UpdateNetworkConnectionsStatusAsync()
     {
-        List<Network> ethernetNetworks = await networkService.GetAllEthernetAdapterNetworksAsync();
+        List<NetworkItem> ethernetNetworks = await networkService.GetAllEthernetAdapterNetworksAsync();
         var adapterName = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
         var networkName = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
         var level = await networkService.GetConnectivityLevelAsync();
