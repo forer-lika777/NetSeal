@@ -65,21 +65,20 @@ public class Worker : BackgroundService
                 }
 
                 bool shouldDial =
-                    (serviceJustStarted && await settings.AutoConnectOnStartup.GetValueAsync()) ||
-                    (resumedFromSleep && await settings.ReconnectOnWake.GetValueAsync()) ||
-                    await settings.AutoConnectOnStartup.GetValueAsync();
+                    (serviceJustStarted && (await settings.AutoConnectPolicy.GetValueAsync()).AutoConnectOnStartup) ||
+                    (resumedFromSleep && (await settings.AutoConnectPolicy.GetValueAsync()).ReconnectOnWake) ||
+                    (await settings.AutoConnectPolicy.GetValueAsync()).AutoConnectOnStartup; 
 
                 serviceJustStarted = false;
 
                 if (!shouldDial)
                     continue;
 
-
                 await rasDialer.RasConnectAsync(
                     null,
                     ENTRY_NAME,
-                    "",
-                    "",
+                    (await settings.RasCredentials.GetValueAsync()).Username,
+                    (await settings.RasCredentials.GetValueAsync()).Password,
                     stoppingToken);
 
                 logger.LogInformation("拨号连接成功。");

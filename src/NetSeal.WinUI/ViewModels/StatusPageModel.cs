@@ -153,17 +153,23 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     public partial bool IsSavingAutoConnectOnStartup { get; set; } = false;
 
-    async partial void OnAutoConnectOnStartupChanged(bool value)
+    async partial void OnAutoConnectOnStartupChanging(bool oldValue, bool newValue)
     {
+        if (oldValue)
+            return;
+
         IsSavingAutoConnectOnStartup = true;
 
         try
         {
-            await settings.AutoConnectOnStartup.SetValueAsync(value);
+            var policy = await settings.AutoConnectPolicy.GetValueAsync();
+            policy.AutoConnectOnStartup = newValue;
+            await settings.AutoConnectPolicy.SaveAsync();
         }
         catch (Exception ex)
         {
-
+            ShowDisplayMessage($"保存设置项时失败：{ex}");
+            AutoConnectOnStartup = oldValue;
         }
         finally
         {
@@ -177,17 +183,23 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     public partial bool IsSavingReconnectOnWake { get; set; } = false;
 
-    async partial void OnReconnectOnWakeChanged(bool value)
+    async partial void OnReconnectOnWakeChanged(bool oldValue, bool newValue)
     {
+        if (oldValue)
+            return;
+
         IsSavingReconnectOnWake = true;
 
         try
         {
-            await settings.ReconnectOnWake.SetValueAsync(value);
+            var policy = await settings.AutoConnectPolicy.GetValueAsync();
+            policy.ReconnectOnWake = newValue;
+            await settings.AutoConnectPolicy.SaveAsync();
         }
         catch (Exception ex)
         {
-
+            ShowDisplayMessage($"保存设置项时失败：{ex}");
+            ReconnectOnWake = oldValue;
         }
         finally
         {
@@ -201,24 +213,29 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     public partial bool IsSavingReconnectOnDisconnect { get; set; } = false;
 
-    async partial void OnReconnectOnDisconnectChanged(bool value)
+    async partial void OnReconnectOnDisconnectChanged(bool oldValue, bool newValue)
     {
+        if (oldValue)
+            return;
+
         IsSavingReconnectOnDisconnect = true;
 
         try
         {
-            await settings.ReconnectOnDisconnect.SetValueAsync(value);
+            var policy = await settings.AutoConnectPolicy.GetValueAsync();
+            policy.ReconnectOnDisconnect = newValue;
+            await settings.AutoConnectPolicy.SaveAsync();
         }
         catch (Exception ex)
         {
-
+            ShowDisplayMessage($"保存设置项时失败：{ex}");
+            ReconnectOnDisconnect = oldValue;
         }
         finally
         {
             IsSavingReconnectOnDisconnect = false;
         }
     }
-
 
     private async Task InitializeAsync()
     {
@@ -234,17 +251,53 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
         await dispatcher.InvokeAsync(async () =>
         {
-            if (await settings.HasSavedNetworkAuth.GetValueAsync())
+            bool hasNetworkAuth = false;
+
+            try
             {
-                //AccountId = appSettings.AccountId.Value;
-                //Password = appSettings.Password.Value;
-                SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
+                hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
+            }
+            catch (Exception ex)
+            {
+                ShowDisplayMessage("读取配置时发生错误：" + ex);
             }
 
-            // 这三个开关属于服务侧配置，读写都走共享文件
-            AutoConnectOnStartup = await settings.AutoConnectOnStartup.GetValueAsync();
-            ReconnectOnWake = await settings.ReconnectOnWake.GetValueAsync();
-            ReconnectOnDisconnect = await settings.ReconnectOnDisconnect.GetValueAsync();
+            if (hasNetworkAuth)
+            {
+                try
+                {
+                    var credentials = await settings.RasCredentials.GetValueAsync();
+                    AccountId = credentials.Username;
+                    Password = credentials.Password;
+                }
+                catch (Exception ex)
+                {
+                    ShowDisplayMessage("读取凭据时发生错误：" + ex);
+                }
+                try
+                {
+                    SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
+                }
+                catch (Exception ex)
+                {
+                    ShowDisplayMessage("读取保存的网络时发生错误：" + ex);
+                }
+                
+            }
+
+            try
+            {
+                var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
+
+                // 这三个开关属于服务侧配置，读写都走共享文件
+                AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
+                ReconnectOnWake = autoConnect.ReconnectOnWake;
+                ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
+            }
+            catch (Exception ex)
+            {
+                ShowDisplayMessage("读取自动连接配置时发生错误：" + ex);
+            }
 
             var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
 
@@ -283,7 +336,16 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         var adapterName = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
         var networkName = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
         var level = await networkService.GetConnectivityLevelAsync();
-        bool hasSavedNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
+
+        bool hasSavedNetworkAuth = false;
+        try
+        {
+            hasSavedNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowDisplayMessage("更新网络连接状态时发生错误：" + ex);
+        }
 
         await dispatcher.InvokeAsync(() =>
         {

@@ -10,7 +10,6 @@ public interface IAppSettings
 {
     public IKeyItem<bool> HasSavedNetworkAuth { get; }
     public IKeyItem<NetworkItem> SelectedNetwork { get; }
-    public IKeyItem<bool> ReconnectOnDisconnect { get; }
-    public IKeyItem<bool> ReconnectOnWake { get; }
-    public IKeyItem<bool> AutoConnectOnStartup { get; }
+    public IKeyItem<AutoConnectPolicy> AutoConnectPolicy { get; }
+    public IKeyItem<RasCredentials> RasCredentials { get; }
 }
