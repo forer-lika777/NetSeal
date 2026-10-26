@@ -142,13 +142,13 @@
                                 </StackPanel>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="自动连接拨号网络" Description="网络可用时由后台服务自动为你连接拨号网络">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingAutoConnectOnStartup, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="唤醒后重新连接" Description="系统从睡眠恢复后立即通过后台服务重新拨号">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnWake, Mode=TwoWay}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnWake, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingReconnectOnWake, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
                             </controls:SettingsCard>
                             <controls:SettingsCard Header="启动后重新连接" Description="后台服务启动或开机自启后立即重新拨号">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnDisconnect, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingReconnectOnDisconnect, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
                             </controls:SettingsCard>
                             <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
                         </StackPanel>
