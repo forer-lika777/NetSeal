@@ -1,8 +1,10 @@
-﻿using System;
+﻿using NetSeal.Core.Models;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace NetSeal.Core.Services.Pipe;
@@ -32,8 +34,8 @@ public class PipeClient
             // 尝试连接服务端
             await clientStream.ConnectAsync(ConnectTimeoutMs, ct).ConfigureAwait(false);
 
-            using var writer = new StreamWriter(clientStream, Encoding.UTF8) { AutoFlush = true };
-            using var reader = new StreamReader(clientStream, Encoding.UTF8);
+            using var writer = new StreamWriter(clientStream, Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
+            using var reader = new StreamReader(clientStream, Encoding.UTF8, leaveOpen: true);
 
             // 发送指令
             await writer.WriteLineAsync(requestLine.AsMemory(), ct).ConfigureAwait(false);
@@ -61,12 +63,12 @@ public class PipeClient
         catch (TimeoutException)
         {
             Debug.WriteLine("管道连接超时：NetSeal 服务可能未运行。");
-            return "SERVICE_NOT_RUNNING";
+            return JsonSerializer.Serialize(IpcResponse.Fail("NetSeal 服务可能未运行（连接超时）。"));
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"管道通信异常: {ex.Message}");
-            return "ERROR";
+            return JsonSerializer.Serialize(IpcResponse.Fail($"管道通信异常：{ex.Message}"));
         }
     }
 }

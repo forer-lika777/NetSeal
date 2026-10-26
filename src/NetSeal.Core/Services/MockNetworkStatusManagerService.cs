@@ -1,12 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
-using NetSeal.Core.Models.Network;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
-using System;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using System.Text;
 
 namespace NetSeal.Core.Services;
 
