@@ -1,6 +1,8 @@
-﻿using NetSeal.Core.Services.Pipe;
+﻿using NetSeal.Core.Models;
+using NetSeal.Core.Services.Pipe;
 using System;
 using System.Collections.Generic;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
 
@@ -17,26 +19,26 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)
     {
-        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = "GET", name }), ct);
+        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = IpcCommands.GetAppSettingsKeyValue, name }), ct);
         var resp = ParseResponse(raw);
-        if (!resp.Ok)
+        if (!resp.Success)
             throw new IOException($"读取设置失败: {resp.Error}");
         return resp.Value;
     }
 
     public async Task SetAsync(string name, string value, CancellationToken ct = default)
     {
-        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = "SET", name, value }), ct);
+        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = IpcCommands.SetAppSettingsKeyValue, name, value }), ct);
         var resp = ParseResponse(raw);
-        if (!resp.Ok)
+        if (!resp.Success)
             throw new IOException($"保存设置失败: {resp.Error}");
     }
 
-    private static PipeResponse ParseResponse(string raw)
+    private static IpcResponse ParseResponse(string raw)
     {
-        PipeResponse? resp;
+        IpcResponse? resp;
         try
-        { resp = JsonSerializer.Deserialize<PipeResponse>(raw); }
+        { resp = JsonSerializer.Deserialize<IpcResponse>(raw); }
         catch (JsonException ex) { throw new IOException("管道响应格式无效", ex); }
 
         if (resp is null)

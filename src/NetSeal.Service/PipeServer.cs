@@ -1,4 +1,5 @@
-﻿using NetSeal.Core.Services.AppSetting;
+﻿using NetSeal.Core.Models;
+using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Pipe;
 using NetSeal.Core.Services.Ras;
 using System;
@@ -44,8 +45,8 @@ public class PipeServer : BackgroundService
                 {
                     await serverStream.WaitForConnectionAsync(stoppingToken).ConfigureAwait(false);
 
-                    using var reader = new StreamReader(serverStream, Encoding.UTF8);
-                    using var writer = new StreamWriter(serverStream, Encoding.UTF8) { AutoFlush = true };
+                    using var reader = new StreamReader(serverStream, Encoding.UTF8, leaveOpen: true);
+                    using var writer = new StreamWriter(serverStream, Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
 
                     // 一个连接处理多条请求，直到客户端断开
                     while (!stoppingToken.IsCancellationRequested)
@@ -82,10 +83,10 @@ public class PipeServer : BackgroundService
 
     private async Task<string> HandleRequestAsync(string requestLine, CancellationToken ct)
     {
-        PipeRequest? request;
+        IpcRequest? request;
         try
         {
-            request = JsonSerializer.Deserialize<PipeRequest>(requestLine);
+            request = JsonSerializer.Deserialize<IpcRequest>(requestLine);
         }
         catch (JsonException ex)
         {
@@ -99,16 +100,16 @@ public class PipeServer : BackgroundService
         {
             switch (request.Cmd)
             {
-                case "GET":
+                case IpcCommands.GetAppSettingsKeyValue:
                     {
                         if (string.IsNullOrEmpty(request.Name))
                             return SerializeError("GET 缺少 name");
 
                         string? value = await settingsStore.GetAsync(request.Name, ct).ConfigureAwait(false);
-                        return JsonSerializer.Serialize(new PipeResponse { Ok = true, Value = value });
+                        return JsonSerializer.Serialize(new IpcResponse { Success = true, Value = value });
                     }
 
-                case "SET":
+                case IpcCommands.SetAppSettingsKeyValue:
                     {
                         if (string.IsNullOrEmpty(request.Name))
                             return SerializeError("SET 缺少 name");
@@ -116,7 +117,7 @@ public class PipeServer : BackgroundService
                             return SerializeError("SET 缺少 value");
 
                         await settingsStore.SetAsync(request.Name, request.Value, ct).ConfigureAwait(false);
-                        return JsonSerializer.Serialize(new PipeResponse { Ok = true });
+                        return JsonSerializer.Serialize(new IpcResponse { Success = true });
                     }
 
                 default:
@@ -129,6 +130,5 @@ public class PipeServer : BackgroundService
             return SerializeError(ex.Message);
         }
     }
-    private static string SerializeError(string error)
-        => JsonSerializer.Serialize(new PipeResponse { Ok = false, Error = error });
+    private static string SerializeError(string error) => JsonSerializer.Serialize(new IpcResponse { Success = false, Error = error });
 }

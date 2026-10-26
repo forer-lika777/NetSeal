@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace NetSeal.Core.Services.Pipe;
+namespace NetSeal.Core.Models;
 
-public sealed class PipeRequest
+public sealed class IpcRequest
 {
     public string Cmd { get; set; } = string.Empty;
     public string? Name { get; set; }
