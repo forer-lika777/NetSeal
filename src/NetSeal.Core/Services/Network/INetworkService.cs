@@ -17,5 +17,5 @@ public interface INetworkService
     public Task<List<NetworkAdapter>> GetActiveNetworkAdaptersAsync();
     public Task<List<string>> GetActiveNetworkAdapterNamesAsync();
     public Task<List<NetworkItem>> GetAllNetworksAsync();
-    public Task<List<NetworkItem>> GetAllEthernetAdapterNetworksAsync();
+    public Task<List<NetworkItem>> GetAllActiveEthernetAdapterNetworksAsync();
 }

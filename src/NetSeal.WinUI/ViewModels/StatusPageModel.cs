@@ -330,7 +330,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     private async Task UpdateNetworkConnectionsStatusAsync()
     {
-        List<NetworkItem> ethernetNetworks = await networkService.GetAllEthernetAdapterNetworksAsync();
+        List<NetworkItem> ethernetNetworks = await networkService.GetAllActiveEthernetAdapterNetworksAsync();
         var adapterName = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
         var networkName = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
         var level = await networkService.GetConnectivityLevelAsync();

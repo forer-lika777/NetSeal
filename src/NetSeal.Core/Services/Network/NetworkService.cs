@@ -157,9 +157,9 @@ public class NetworkService : INetworkService
     /// 获取所有接入了以太网的逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public List<NetworkItem> GetAllEthernetAdapterNetworks()
+    public List<NetworkItem> GetAllActiveEthernetAdapterNetworks()
     {
-        return GetAllEthernetAdapterNetworks(GetAllINetworks());
+        return GetAllActiveEthernetAdapterNetworks(GetAllINetworks());
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class NetworkService : INetworkService
     /// </summary>
     /// <param name="networks">要过滤的逻辑网络</param>
     /// <returns></returns>
-    private List<NetworkItem> GetAllEthernetAdapterNetworks(List<INetwork> networks)
+    private List<NetworkItem> GetAllActiveEthernetAdapterNetworks(List<INetwork> networks)
     {
         var physicalIds = new HashSet<Guid>();
         foreach (var ethernet in adapterService.GetActivePhysicalEthernetAdapters())
@@ -204,9 +204,9 @@ public class NetworkService : INetworkService
         return result;
     }
 
-    public async Task<List<NetworkItem>> GetAllEthernetAdapterNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllActiveEthernetAdapterNetworksAsync()
     {
-        return await Task.Run(() => GetAllEthernetAdapterNetworks());
+        return await Task.Run(() => GetAllActiveEthernetAdapterNetworks());
     }
 
     //public async Task<ConnectionProfile?> GetInternetConnectionProfileAsync()
