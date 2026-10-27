@@ -11,8 +11,6 @@ namespace NetSeal.Core.Services.Pipe;
 
 public class PipeClient
 {
-    // 管道名称必须与服务端完全一致
-    private const string PipeName = "NetSeal_Pipe";
 
     // 连接超时时间（毫秒）
     private const int ConnectTimeoutMs = 1000;
@@ -29,7 +27,7 @@ public class PipeClient
         try
         {
             // 创建客户端管道流
-            using var clientStream = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            using var clientStream = new NamedPipeClientStream(".", IpcPipeName.NetSealServiceIpcPipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
 
             // 尝试连接服务端
             await clientStream.ConnectAsync(ConnectTimeoutMs, ct).ConfigureAwait(false);

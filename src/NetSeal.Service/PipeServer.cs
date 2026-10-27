@@ -16,7 +16,6 @@ public class PipeServer : BackgroundService
     private readonly ILogger<PipeServer> logger;
     private readonly IAppSettings appSettings;
     private readonly ISettingsStore settingsStore;
-    private const string PipeName = "NetSeal_Pipe";
 
     public PipeServer(ILogger<PipeServer> logger, IAppSettings appSettings, ISettingsStore settingsStore)
     {
@@ -35,7 +34,7 @@ public class PipeServer : BackgroundService
             {
                 // 创建命名管道
                 using var serverStream = new NamedPipeServerStream(
-                    PipeName,
+                    IpcPipeName.NetSealServiceIpcPipeName,
                     PipeDirection.InOut,
                     1, // 最大实例数
                     PipeTransmissionMode.Byte,
