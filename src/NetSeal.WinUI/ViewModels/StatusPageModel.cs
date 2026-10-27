@@ -28,8 +28,6 @@ namespace NetSeal.ViewModels;
 
 public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInformationChangedMessage>
 {
-    private const string ENTRY_NAME = "NetSeal Connection";
-
     private readonly IAppSettings settings;
     private readonly IUiDispatcher dispatcher;
     private readonly INetworkService networkService;
@@ -423,7 +421,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
                 IsPppoeNetworkConnected = true;
                 ActivePppoeConnectionEntryName = connection.EntryName;
                 // 此 pppoe 连接是当前应用程序管理的 pppoe 连接
-                IsPppoeConnectionManagedByOutside = ActivePppoeConnectionEntryName != ENTRY_NAME;
+                IsPppoeConnectionManagedByOutside = ActivePppoeConnectionEntryName != RasEntryName.NetSealServiceEntryName;
                 // pppoe 连接一定使用以太网适配器
                 IsEthernetNetworkAdapterConnected = true;
                 IsOtherNetworkAdapterConnected= false;
@@ -508,7 +506,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [RelayCommand]
     private async Task SetCredentialsAsync()
     {
-        await rasDialer.RasSetCredentialsAsync(null, ENTRY_NAME, AccountId, Password);
+        await rasDialer.RasSetCredentialsAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password);
     }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
@@ -552,7 +550,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         //    ShowDisplayMessage("凭据保存失败。");
         //}
 
-        await rasDialer.RasCreateEntryAsync(null, ENTRY_NAME, AccountId, Password);
+        await rasDialer.RasCreateEntryAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password);
 
         await ExcuteConnectTaskAsync();
 
@@ -581,7 +579,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
         try
         {
-            await rasDialer.RasConnectAsync(null, ENTRY_NAME, AccountId, Password, connectCts!.Token);
+            await rasDialer.RasConnectAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password, connectCts!.Token);
 
             await settings.HasSavedNetworkAuth.SetValueAsync(true);
             //appSettings.AccountId.set
@@ -600,7 +598,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     {
         try
         {
-            await rasDialer.RasDisconnectAsync(null, ENTRY_NAME);
+            await rasDialer.RasDisconnectAsync(null, RasEntryName.NetSealServiceEntryName);
         }
         catch (Win32Exception ex)
         {

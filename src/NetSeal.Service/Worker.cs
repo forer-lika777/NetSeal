@@ -1,4 +1,5 @@
-﻿using NetSeal.Core.Services.AppSetting;
+﻿using NetSeal.Core.Models;
+using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Ras;
 using System.ComponentModel;
 using System.Runtime.Versioning;
@@ -9,8 +10,6 @@ namespace NetSeal.Service;
 
 public class Worker : BackgroundService
 {
-    private const string ENTRY_NAME = "NetSeal Connection";
-
     /// <summary>
     /// 轮询间隔。共享配置与连接状态都在每一轮重新读取，UI 修改后最多一个间隔生效。
     /// </summary>
@@ -76,7 +75,7 @@ public class Worker : BackgroundService
 
                 await rasDialer.RasConnectAsync(
                     null,
-                    ENTRY_NAME,
+                    RasEntryName.NetSealServiceEntryName,
                     (await settings.RasCredentials.GetValueAsync()).Username,
                     (await settings.RasCredentials.GetValueAsync()).Password,
                     stoppingToken);
