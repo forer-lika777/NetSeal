@@ -38,6 +38,8 @@ public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
             return this.value;
         }
 
+        value = loaded;
+
         return loaded;
     }
 

@@ -63,6 +63,7 @@ public class LocalSettingsStore : ISettingsStore
             semaphore.Release();
         }
     }
+
     public async Task SetAsync(string name, string value, CancellationToken ct = default)
     {
         await semaphore.WaitAsync(ct);

@@ -33,7 +33,6 @@ public class PipeClient
             await clientStream.ConnectAsync(ConnectTimeoutMs, ct).ConfigureAwait(false);
 
             using var writer = new StreamWriter(clientStream, Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
-            using var reader = new StreamReader(clientStream, Encoding.UTF8, leaveOpen: true);
 
             // 发送指令
             await writer.WriteLineAsync(requestLine.AsMemory(), ct).ConfigureAwait(false);
@@ -45,6 +44,7 @@ public class PipeClient
             string? response;
             try
             {
+                using var reader = new StreamReader(clientStream, Encoding.UTF8, leaveOpen: true);
                 response = await reader.ReadLineAsync(timeoutCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)

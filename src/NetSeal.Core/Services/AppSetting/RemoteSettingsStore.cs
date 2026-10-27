@@ -19,16 +19,23 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)
     {
-        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = IpcCommands.GetAppSettingsKeyValue, name }), ct);
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.GetAppSettingsKeyValue, Name = name });
+
+        string raw = await client.SendCommandAsync(request, ct);
+
         var resp = ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"读取设置失败: {resp.Error}");
+
         return resp.Value;
     }
 
     public async Task SetAsync(string name, string value, CancellationToken ct = default)
     {
-        string raw = await client.SendCommandAsync(JsonSerializer.Serialize(new { cmd = IpcCommands.SetAppSettingsKeyValue, name, value }), ct);
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.SetAppSettingsKeyValue, Name = name, Value = value });
+
+        string raw = await client.SendCommandAsync(request, ct);
+
         var resp = ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"保存设置失败: {resp.Error}");
@@ -38,11 +45,17 @@ public class RemoteSettingsStore : ISettingsStore
     {
         IpcResponse? resp;
         try
-        { resp = JsonSerializer.Deserialize<IpcResponse>(raw); }
-        catch (JsonException ex) { throw new IOException("管道响应格式无效", ex); }
+        { 
+            resp = JsonSerializer.Deserialize<IpcResponse>(raw); 
+        }
+        catch (JsonException ex) 
+        { 
+            throw new IOException("管道响应格式无效", ex); 
+        }
 
         if (resp is null)
             throw new IOException("管道响应为空");
+
         return resp;
     }
 }

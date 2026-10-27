@@ -31,8 +31,6 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 {
     private readonly IAppSettings settings;
     private readonly IUiDispatcher dispatcher;
-    private readonly INetworkService networkService;
-    private readonly INetworkAdapterService adapterService;
     private readonly ICoreManager coreManager;
     private readonly IRasDialer rasDialer;
 
@@ -47,15 +45,11 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     public StatusPageModel(
         IAppSettings appSettings, 
         IUiDispatcher dispatcher, 
-        INetworkService networkService, 
-        INetworkAdapterService adapterService, 
         IRasDialer rasDialer, 
         ICoreManager coreManager)
     {
         this.settings = appSettings;
         this.dispatcher = dispatcher;
-        this.networkService = networkService;
-        this.adapterService = adapterService;
         this.rasDialer = rasDialer;
         this.coreManager = coreManager;
         StrongReferenceMessenger.Default.Register<NetworkInformationChangedMessage>(this);
@@ -162,7 +156,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     async partial void OnAutoConnectOnStartupChanging(bool oldValue, bool newValue)
     {
-        if (oldValue)
+        if (IsLoading || IsSavingAutoConnectOnStartup)
             return;
 
         IsSavingAutoConnectOnStartup = true;
@@ -192,7 +186,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     async partial void OnReconnectOnWakeChanged(bool oldValue, bool newValue)
     {
-        if (oldValue)
+        if (IsLoading || IsSavingReconnectOnWake)
             return;
 
         IsSavingReconnectOnWake = true;
@@ -222,7 +216,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     async partial void OnReconnectOnDisconnectChanged(bool oldValue, bool newValue)
     {
-        if (oldValue)
+        if (IsLoading || IsSavingReconnectOnDisconnect)
             return;
 
         IsSavingReconnectOnDisconnect = true;

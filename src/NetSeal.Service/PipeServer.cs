@@ -36,16 +36,17 @@ public class PipeServer : BackgroundService
                 using var serverStream = new NamedPipeServerStream(
                     IpcPipeName.NetSealServiceIpcPipeName,
                     PipeDirection.InOut,
-                    1, // 最大实例数
+                    1,
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous);
 
                 try
                 {
-                    await serverStream.WaitForConnectionAsync(stoppingToken).ConfigureAwait(false);
+                    await serverStream.WaitForConnectionAsync(stoppingToken);
+
+                    logger.LogDebug("服务已接收到客户端连接");
 
                     using var reader = new StreamReader(serverStream, Encoding.UTF8, leaveOpen: true);
-                    using var writer = new StreamWriter(serverStream, Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
 
                     // 一个连接处理多条请求，直到客户端断开
                     while (!stoppingToken.IsCancellationRequested)
@@ -55,6 +56,7 @@ public class PipeServer : BackgroundService
                             break;   // 客户端断开
 
                         string responseLine = await HandleRequestAsync(line, stoppingToken).ConfigureAwait(false);
+                        using var writer = new StreamWriter(serverStream, Encoding.UTF8, leaveOpen: true) { AutoFlush = true };
                         await writer.WriteLineAsync(responseLine.AsMemory(), stoppingToken).ConfigureAwait(false);
                     }
                 }
