@@ -8,4 +8,6 @@ public static class IpcCommands
 {
     public const string GetAppSettingsKeyValue = "GET";
     public const string SetAppSettingsKeyValue = "SET";
+    public const string RasConnect = "CONNECT";
+    public const string RasDisconnect = "RASDISCONNECT";
 }
