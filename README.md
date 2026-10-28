@@ -3,12 +3,12 @@
 
 Reimu's NetSeal 是 forer4433 在广东工业大学自动网络拨号连接的 Windows 桌面应用。
 
-Reimu's NetSeal 的功能
+Reimu's NetSeal 的核心功能
 ---
 
-* 开机登录前连接功能：基于 Windows 服务的体系，帮助你在开机时（账户登录前）即可进行自动网络拨号连接。
-* 专一网络识别功能：识别并链接到特定网络，仅连接到特定网络时才进行拨号连接。
-* 高级连接管理功能：开机自启动连接、睡眠中唤醒连接、连接意外断开时重新连接。
+* 开机登录前连接：基于 Windows 服务的体系，帮助你在开机时（账户登录前）即可进行自动网络拨号连接。
+* 专一网络识别：识别并链接到网络，仅连接到特定网络时才进行拨号连接。
+* 高级连接管理：开机自启动连接、睡眠中唤醒连接、连接意外断开时重新连接。
 
 Reimu's NetSeal 的技术栈
 ---
@@ -23,3 +23,12 @@ Reimu's NetSeal 的技术栈
 应用只能在 Windows 10 （1809 以后）或更高版本的 Windows 系统中运行，因其大部分技术栈仅在 Windows 中可用。
 
 不会考虑跨平台设计。
+
+另请参阅
+---
+
+上古老坟 -> https://learn.microsoft.com/en-us/windows/win32/api/ras/
+
+WinUI 3 -> https://learn.microsoft.com/en-us/windows/apps/winui/winui3/
+
+HeatWave -> https://www.firegiant.com/heatwave/
