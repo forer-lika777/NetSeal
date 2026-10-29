@@ -84,7 +84,9 @@ public partial class App : Application
         services.AddSingleton<ISettingsStore, RemoteSettingsStore>();
         services.AddSingleton<PipeClient>();
 
-        if (false)
+        bool mock = false;
+
+        if (mock)
         {
             MockNetworkStatusManagerService service = new MockNetworkStatusManagerService();
             services.AddSingleton<IRasDialer>(service);
