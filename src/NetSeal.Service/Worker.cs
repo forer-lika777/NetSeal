@@ -1,5 +1,7 @@
 ﻿using NetSeal.Core.Models;
+using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
+using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System.ComponentModel;
 using System.Runtime.Versioning;
@@ -24,14 +26,44 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> logger;
     private readonly IRasDialer rasDialer;
     private readonly IAppSettings settings;
+    private readonly ICoreManager coreManager;
     private readonly ServiceState serviceState;
 
-    public Worker(ILogger<Worker> logger, IRasDialer rasDialer, IAppSettings settings, ServiceState serviceState)
+    private AutoConnectPolicy autoConnect;
+    private RasCredentials? rasCredentials = null;
+
+    private bool serviceJustStarted = true;
+
+    private DateTime lastCheckTime = DateTime.Now;
+
+    private DateTime nextRetryTime = DateTime.MinValue;
+
+    private bool isEthernetConnected = false;
+    private bool isPppoeNetworkConnected = false;
+    private bool isNotPppoeNetorkConnection = false;
+    private bool isPppoeNetworkManagedByOutside = false;
+    private bool isNetworkConnectionManagedByOutside = false;
+
+    /// <summary>
+    /// Represent whether user side has sent a disconnect request.
+    /// ReconnectOnDisconnect policy should not be triggered while connection is disconnected by the user side.
+    /// </summary>
+    private bool disconnectRequested = false;
+
+    public Worker(ILogger<Worker> logger, 
+        IRasDialer rasDialer, 
+        IAppSettings settings, 
+        INetworkService networkService, 
+        INetworkAdapterService networkAdapterService, 
+        ICoreManager coreManager,
+        ServiceState serviceState)
     {
         this.logger = logger;
         this.rasDialer = rasDialer;
         this.settings = settings;
+        this.coreManager = coreManager;
         this.serviceState = serviceState;
+        autoConnect = new AutoConnectPolicy();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -41,43 +73,30 @@ public class Worker : BackgroundService
         await Task.Delay(3000, stoppingToken);
 
         int backoffSeconds = 5;
-        bool serviceJustStarted = true;
-        DateTime lastTick = DateTime.UtcNow;
+
+        await UpdateNetworkStatusAsync();
+
+        autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
+        rasCredentials = await settings.RasCredentials.GetValueAsync();
 
         while (!stoppingToken.IsCancellationRequested)
         {
             await serviceState.WaitForReloadAsync(PollInterval, stoppingToken);
 
-            DateTime now = DateTime.UtcNow;
-            bool resumedFromSleep = now - lastTick > SleepGapThreshold;
-            lastTick = now;
+            bool shouldConnect = GetShouldConnect();
 
-            if (resumedFromSleep)
-                logger.LogInformation("检测到系统从睡眠中恢复。");
+            serviceJustStarted = false;
+
+            if (!shouldConnect)
+                continue;
 
             try
             {
-                if (await rasDialer.GetActiveRasConnectionAsync() is not null)
-                {
-                    serviceJustStarted = false;
-                    continue;
-                }
-
-                bool shouldDial =
-                    (serviceJustStarted && (await settings.AutoConnectPolicy.GetValueAsync()).AutoConnectOnStartup) ||
-                    (resumedFromSleep && (await settings.AutoConnectPolicy.GetValueAsync()).ReconnectOnWake) ||
-                    (await settings.AutoConnectPolicy.GetValueAsync()).AutoConnectOnStartup; 
-
-                serviceJustStarted = false;
-
-                if (!shouldDial)
-                    continue;
-
                 await rasDialer.RasConnectAsync(
                     null,
                     RasEntryName.NetSealServiceEntryName,
-                    (await settings.RasCredentials.GetValueAsync()).Username,
-                    (await settings.RasCredentials.GetValueAsync()).Password,
+                    rasCredentials.Username,
+                    rasCredentials.Password,
                     stoppingToken);
 
                 logger.LogInformation("拨号连接成功。");
@@ -98,5 +117,105 @@ public class Worker : BackgroundService
         }
 
         logger.LogInformation("NetSeal 服务已停止。");
+    }
+
+    public void ConnectRequest()
+    {
+        disconnectRequested = false;
+    }
+
+    public void DisconnectRequest()
+    {
+        disconnectRequested = true;
+
+    }
+
+    public async Task UpdateAutoConnectPolicyAsync()
+    {
+        autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
+        if (autoConnect.ReconnectOnDisconnect)
+            serviceState.TriggerReload();
+    }
+
+    public async Task UpdateRasCredentrialsAsync()
+    {
+        rasCredentials = await settings.RasCredentials.GetValueAsync();
+        serviceState.TriggerReload();
+    }
+
+    private async Task UpdateNetworkStatusAsync()
+    {
+        var status = await coreManager.GetNetworkStatusAsync();
+        isEthernetConnected = status.IsEthernetConnected;
+        isPppoeNetworkConnected = status.IsPppoeNetworkConnected;
+        isNotPppoeNetorkConnection = status.IsNotPppoeNetworkConnection;
+        isPppoeNetworkManagedByOutside = status.IsPppoeConnectionManagedByOutside;
+        isNetworkConnectionManagedByOutside = status.IsNetworkConnectionManagedByOutside;
+    }
+
+    private bool GetShouldConnect()
+    {
+        if (isPppoeNetworkConnected)
+        {
+            if (serviceJustStarted)
+                logger.LogInformation("当前已连接到 pppoe 网络。");
+
+            return false;
+        }
+
+        var now = DateTime.Now;
+        var timeDrift = now - lastCheckTime;
+        lastCheckTime = now;
+
+        bool resumedFromSleep = timeDrift.TotalSeconds > 15;
+
+        if (resumedFromSleep)
+        {
+            logger.LogInformation("检测到系统从睡眠中恢复。");
+            if (autoConnect.ReconnectOnWake)
+                return GetCanConnect();
+        }
+        else
+        {
+            if (serviceJustStarted)
+            {
+                if (autoConnect.AutoConnectOnStartup)
+                    return GetCanConnect();
+            }
+            else
+            {
+                if (disconnectRequested)
+                    return false;
+
+                logger.LogError("检测到意外的断连");
+                if (autoConnect.ReconnectOnDisconnect)
+                    return GetCanConnect();
+            }
+        }
+
+        return false;
+    }
+
+    private bool GetCanConnect()
+    {
+        if (!isEthernetConnected)
+        {
+            logger.LogInformation("当前未连接到有线网络。");
+            return false;
+        }
+
+        if (isNetworkConnectionManagedByOutside)
+        {
+            logger.LogInformation("当前网络由外部管理。");
+            return false;
+        }
+
+        if (isPppoeNetworkManagedByOutside)
+        {
+            logger.LogInformation("当前 pppoe 网络由外部管理。");
+            return false;
+        }
+
+        return true;
     }
 }

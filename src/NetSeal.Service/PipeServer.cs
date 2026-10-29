@@ -16,12 +16,21 @@ public class PipeServer : BackgroundService
     private readonly ILogger<PipeServer> logger;
     private readonly IAppSettings appSettings;
     private readonly ISettingsStore settingsStore;
+    private readonly ServiceState serviceState;
+    private readonly Worker worker;
 
-    public PipeServer(ILogger<PipeServer> logger, IAppSettings appSettings, ISettingsStore settingsStore)
+    public PipeServer(
+        ILogger<PipeServer> logger, 
+        IAppSettings appSettings, 
+        ISettingsStore settingsStore, 
+        ServiceState serviceState,
+        Worker worker)
     {
         this.logger = logger;
         this.appSettings = appSettings;
         this.settingsStore = settingsStore;
+        this.serviceState = serviceState;
+        this.worker = worker;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -114,10 +123,18 @@ public class PipeServer : BackgroundService
                     {
                         if (string.IsNullOrEmpty(request.Name))
                             return SerializeError("SET 缺少 name");
-                        if (request.Value is null)
+
+                        if (string.IsNullOrEmpty(request.Value))
                             return SerializeError("SET 缺少 value");
 
                         await settingsStore.SetAsync(request.Name, request.Value, ct).ConfigureAwait(false);
+
+                        if (request.Name == appSettings.AutoConnectPolicy.Name)
+                            await worker.UpdateAutoConnectPolicyAsync();
+
+                        if (request.Name == appSettings.RasCredentials.Name)
+                            await worker.UpdateRasCredentrialsAsync();
+
                         return JsonSerializer.Serialize(new IpcResponse { Success = true });
                     }
 
