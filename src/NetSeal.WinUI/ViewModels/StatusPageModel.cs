@@ -6,7 +6,7 @@ using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
-using NetSeal.Services;
+using NetSeal.WinUI.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

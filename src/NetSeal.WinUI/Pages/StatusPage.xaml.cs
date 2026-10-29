@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using NetSeal.Core.Models;
-using NetSeal.ViewModels;
+using NetSeal.WinUI.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.IO;

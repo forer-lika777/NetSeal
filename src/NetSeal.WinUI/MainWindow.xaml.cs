@@ -16,7 +16,7 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Security.EnterpriseData;
 
-namespace NetSeal;
+namespace NetSeal.WinUI;
 
 public sealed partial class MainWindow : Window
 {

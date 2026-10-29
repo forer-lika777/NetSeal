@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NetSeal.Services;
+namespace NetSeal.WinUI.Services;
 
 public interface IUiDispatcher
 {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 
-namespace NetSeal.Services;
+namespace NetSeal.WinUI.Services;
 
 public class WinUIDispatcher : IUiDispatcher
 {
