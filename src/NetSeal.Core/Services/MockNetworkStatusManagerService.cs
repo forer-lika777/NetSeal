@@ -52,7 +52,7 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
         return rasConnection;
     }
 
-    public async Task<List<NetworkItem>> GetAllEthernetAdapterNetworksAsync()
+    public async Task<List<NetworkItem>> GetAllActiveEthernetAdapterNetworksAsync()
     {
         await Task.Delay(1000);
         List<NetworkItem> results = [new NetworkItem { Name = "网络", IsConnected = true }];
@@ -68,7 +68,8 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
 
     public async Task<NetworkConnectivityLevel> GetConnectivityLevelAsync()
     {
-        return NetworkConnectivityLevel.ConstrainedInternetAccess;
+        
+        return ConnectivityLevel;
     }
 
     public async Task<bool> GetIsConnectionManagedByCurrentSessionAsync()
@@ -110,7 +111,7 @@ public class MockNetworkStatusManagerService : INetworkService, INetworkAdapterS
         await Task.Delay(2000, cancellationToken);
         rasConnection = null;
         pppoeConnected = false;
-        ConnectivityLevel = NetworkConnectivityLevel.InternetAccess;
+        ConnectivityLevel = NetworkConnectivityLevel.ConstrainedInternetAccess;
         StrongReferenceMessenger.Default.Send<NetworkInformationChangedMessage>(new NetworkInformationChangedMessage());
     }
 

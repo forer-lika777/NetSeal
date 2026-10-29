@@ -25,7 +25,7 @@ using Windows.Devices.PointOfService;
 using Windows.Media.DialProtocol;
 using Windows.System;
 
-namespace NetSeal.ViewModels;
+namespace NetSeal.WinUI.ViewModels;
 
 public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInformationChangedMessage>
 {
@@ -103,10 +103,18 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     public partial int SelectedNetworkIndex { get; set; } = -1;
 
+    [ObservableProperty]
+    public partial bool IsSavingSelectedNetworkIndex { get; set; } = false;
+
     async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
     {
+        if (IsSavingSelectedNetworkIndex)
+            return;
+
         if (newValue < 0)
             return;
+
+        IsSavingSelectedNetworkIndex = true;
 
         if (SelectedNetwork is not null && oldValue == -1)
         {
@@ -122,9 +130,15 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
                 SelectedNetworkIndex = oldValue;
                 return;
             }
+            finally
+            {
+                IsSavingSelectedNetworkIndex = false;
+            }
         }
 
         SelectedNetwork = Networks[(int)newValue];
+        await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
+        await settings.HasSavedNetworkAuth.SetValueAsync(true);
     }
 
     [ObservableProperty]
@@ -266,6 +280,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
             {
                 try
                 {
+                    SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
                     var credentials = await settings.RasCredentials.GetValueAsync();
                     AccountId = credentials.Username;
                     Password = credentials.Password;
@@ -364,18 +379,6 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
             HasAvailableNetworks = Networks.Count > 0;
 
-            if (!hasSavedNetworkAuth)
-            {
-                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
-                return;
-            }
-
-            if (!HasAvailableNetworks)
-            {
-                ShowDisplayMessage("未找到可用的网络连接。");
-                return;
-            }
-
             IsInternetAccess = status.IsInternetAccess;
             ActiveNetworkAdapterNames = status.ActiveNetworkAdapterNames;
             ActiveNetworkNames = status.ActiveNetworkNames;
@@ -388,6 +391,18 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
             ActivePppoeConnectionEntryName = status.ActivePppoeConnectionEntryName;
             IsPppoeConnectionManagedByOutside = status.IsPppoeConnectionManagedByOutside;
             IsNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
+
+            if (!hasSavedNetworkAuth)
+            {
+                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
+                return;
+            }
+
+            if (!HasAvailableNetworks)
+            {
+                ShowDisplayMessage("未找到可用的网络连接。");
+                return;
+            }
         });
     }
 
@@ -411,15 +426,8 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         if (IsConnecting)
             return false;
 
-        // 用户名或密码为空
-        if (string.IsNullOrWhiteSpace(AccountId) || string.IsNullOrWhiteSpace(Password))
-        {
-            ShowDisplayMessage("请输入用户名或密码");
-            return false;
-        }
-
         // 没有匹配的逻辑网络
-        if (!Networks.Any(it => it.Name == SelectedNetwork?.Name))
+        if (!Networks.Any(it => it.Id == SelectedNetwork?.Id))
         {
             ShowDisplayMessage("在网络列表中没有找到目标网络连接项。");
             return false;
