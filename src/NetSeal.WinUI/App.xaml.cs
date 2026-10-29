@@ -29,13 +29,14 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace NetSeal;
+namespace NetSeal.WinUI;
 /// <summary>
 /// Provides application-specific behavior to supplement the default Application class.
 /// </summary>
@@ -80,8 +81,10 @@ public partial class App : Application
         var services = new ServiceCollection();
 
         services.AddSingleton<StatusPageModel>();
+        services.AddTransient<CredentialsEnterViewModel>();
         services.AddSingleton<IAppSettings, AppSettings>();
         services.AddSingleton<ISettingsStore, RemoteSettingsStore>();
+        services.AddSingleton<ICoreManager, CoreManager>();
         services.AddSingleton<PipeClient>();
 
         bool mock = false;

@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using NetSeal.Core.Models;
+using NetSeal.WinUI.Controls;
 using NetSeal.WinUI.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -60,18 +61,18 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
         await dialog.ShowAsync();
     }
 
-    private void PasswordEnterBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        PasswordEnterBox.SelectAll();
-    }
+    //private void PasswordEnterBox_GotFocus(object sender, RoutedEventArgs e)
+    //{
+    //    PasswordEnterBox.SelectAll();
+    //}
 
-    private void UsernameEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != Windows.System.VirtualKey.Enter)
-            return;
+    //private void UsernameEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    //{
+    //    if (e.Key != Windows.System.VirtualKey.Enter)
+    //        return;
 
-        PasswordEnterBox.Focus(FocusState.Programmatic);
-    }
+    //    PasswordEnterBox.Focus(FocusState.Programmatic);
+    //}
 
     private void PasswordEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -85,5 +86,42 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
     private void NetworkDesciptionButton_Click(object sender, RoutedEventArgs e)
     {
         NetworkDesciptionTeachingTip.IsOpen = true;
+    }
+
+    private async void ChangeCredentialsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var credentialsEnterView = new CredentialsEnterView();
+        var dialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            PrimaryButtonText = "确定",
+            SecondaryButtonText = "取消",
+            DefaultButton = ContentDialogButton.Primary,
+            Title = "更改网络凭据",
+            Content = credentialsEnterView,
+        };
+        
+        dialog.PrimaryButtonClick += async (s, e) =>
+        {
+            var deferral = e.GetDeferral();
+            try
+            {
+                try
+                {
+                    await credentialsEnterView.ViewModel.CommitCommand.ExecuteAsync(null);
+                }
+                catch
+                {
+                    e.Cancel = true;
+                }
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        };
+
+        await dialog.ShowAsync();
     }
 }

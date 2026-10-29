@@ -18,6 +18,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Assets\icon.ico" />
+    <None Remove="Controls\CredentialsEnterView.xaml" />
     <None Remove="Pages\HomePage.xaml" />
     <None Remove="Pages\MainPage.xaml" />
     <None Remove="Pages\SettingsPage.xaml" />
@@ -122,5 +123,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetSeal.Core\NetSeal.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\CredentialsEnterView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 </Project>
