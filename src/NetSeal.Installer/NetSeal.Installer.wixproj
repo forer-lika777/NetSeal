@@ -7,7 +7,6 @@
     <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NetSeal.Agent\NetSeal.Agent.csproj" />
     <ProjectReference Include="..\NetSeal.Service\NetSeal.Service.csproj" />
     <ProjectReference Include="..\NetSeal.WinUI\NetSeal.WinUI.csproj" />
   </ItemGroup>

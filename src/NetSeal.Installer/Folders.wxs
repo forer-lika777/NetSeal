@@ -3,7 +3,6 @@
 		<StandardDirectory Id="ProgramFiles64Folder">
 			<Directory Id="INSTALLFOLDER" Name="NetSeal">
 				<Directory Id="SERVICEDIR" Name="Service" />
-				<Directory Id="AGENTDIR" Name="Agent" />
 				<Directory Id="WINUIDIR" Name="WinUI" />
 			</Directory>
 		</StandardDirectory>

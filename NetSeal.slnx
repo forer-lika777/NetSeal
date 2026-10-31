@@ -8,7 +8,6 @@
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="NetSeal.Core.Tests/NetSeal.Core.Tests.csproj" Id="178c35bd-4e8c-4892-b5e0-b4d983f50406" />
-  <Project Path="src/NetSeal.Agent/NetSeal.Agent.csproj" Id="53f5ce24-7114-4709-98c5-9453b36e0d70" />
   <Project Path="src/NetSeal.Core/NetSeal.Core.csproj" Id="00ebdc3e-c870-4e13-aa1d-654f63656983" />
   <Project Path="src/NetSeal.Installer/NetSeal.Installer.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="49a9ccca-b4cb-42dd-8c73-ed7b5d7097f0" />
   <Project Path="src/NetSeal.Service/NetSeal.Service.csproj" Id="d8b0e6f3-4c45-4312-b3d8-baf6798dd2c6" />

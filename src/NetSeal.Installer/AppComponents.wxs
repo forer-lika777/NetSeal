@@ -15,14 +15,6 @@
 				<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" />
 			</Component>
 
-			<Files Include="!(bindpath.NetSeal.Agent)\**" Directory="AGENTDIR">
-				<Exclude Files="!(bindpath.NetSeal.Agent)\NetSeal.Agent.exe" />
-				<Exclude Files="!(bindpath.NetSeal.Agent)\*.pdb" />
-			</Files>
-			<Component Directory="AGENTDIR" Guid="*">
-				<File Id="AgentExe" Source="!(bindpath.NetSeal.Agent)\NetSeal.Agent.exe" KeyPath="yes" />
-			</Component>
-
 			<Files Include="!(bindpath.NetSeal.WinUI)\**" Directory="WINUIDIR">
 				<Exclude Files="!(bindpath.NetSeal.WinUI)\*.pdb" />
 				<Exclude Files="!(bindpath.NetSeal.WinUI)\NetSeal.WinUI.exe" />
