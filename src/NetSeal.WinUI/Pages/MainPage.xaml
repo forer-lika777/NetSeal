@@ -9,9 +9,17 @@
     mc:Ignorable="d">
 
     <Grid>
-        <NavigationView x:Name="NavigationView" IsSettingsVisible="True" PaneDisplayMode="LeftCompact" ItemInvoked="NavigationView_ItemInvoked" IsBackEnabled="True" BackRequested="NavigationView_BackRequested">
+        <NavigationView x:Name="NavigationView" IsSettingsVisible="True" 
+                        PaneDisplayMode="LeftCompact" ItemInvoked="NavigationView_ItemInvoked" 
+                        IsBackEnabled="True" BackRequested="NavigationView_BackRequested" >
             <NavigationView.Content>
-                <Frame x:Name="MainFrame"/>
+                <Grid>
+                    <ParallaxView Source="{Binding ElementName=MainFrame, Path=Content}" VerticalShift="200" MaxVerticalShiftRatio="0.2">
+                        <Image Source="/Assets/background.jpg" Opacity="0.7" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                    </ParallaxView>
+                    <Rectangle Fill="Black" Opacity="0.5"/>
+                    <Frame x:Name="MainFrame"/>
+                </Grid>
             </NavigationView.Content>
         </NavigationView>
     </Grid>
