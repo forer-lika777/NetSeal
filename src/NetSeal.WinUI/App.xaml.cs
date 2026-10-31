@@ -49,7 +49,7 @@ public partial class App : Application
     private bool windowShow = true;
     private bool reallyExit;
 
-    [LibraryImport("user32.dll", EntryPoint = "SetForegroundWindowA")]
+    [LibraryImport("user32.dll", EntryPoint = "SetForegroundWindow")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetForegroundWindow(IntPtr hWnd);
 
