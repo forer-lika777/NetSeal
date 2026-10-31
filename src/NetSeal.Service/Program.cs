@@ -15,11 +15,26 @@ builder.Services.AddWindowsService(options =>
 builder.Services.AddSingleton<IRasDialer, RasDialer>();
 builder.Services.AddSingleton<IAppSettings, AppSettings>();
 builder.Services.AddSingleton<ISettingsStore, LocalSettingsStore>();
+
 builder.Services.AddSingleton<INetworkService, NetworkService>();
 builder.Services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
-builder.Services.AddSingleton<ICoreManager, CoreManager>();
+
+bool mock = false;
+
+if (mock)
+{
+    MockNetworkStatusManagerService service = new MockNetworkStatusManagerService();
+    builder.Services.AddSingleton<ICoreManager>(service);
+    builder.Services.AddSingleton<IRasDialer>(service);
+}
+else
+{
+    builder.Services.AddSingleton<ICoreManager, CoreManager>();
+    builder.Services.AddSingleton<IRasDialer, RasDialer>();
+}
+
 builder.Services.AddSingleton<Worker>();
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Worker>());
 builder.Services.AddHostedService<PipeServer>();
 builder.Services.AddSingleton<ServiceState>();
 

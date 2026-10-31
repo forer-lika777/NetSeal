@@ -87,20 +87,22 @@ public partial class App : Application
         services.AddSingleton<ICoreManager, CoreManager>();
         services.AddSingleton<PipeClient>();
 
+        services.AddSingleton<INetworkService, NetworkService>();
+        services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
+
         bool mock = false;
 
         if (mock)
+
         {
             MockNetworkStatusManagerService service = new MockNetworkStatusManagerService();
+            services.AddSingleton<ICoreManager>(service);
             services.AddSingleton<IRasDialer>(service);
-            services.AddSingleton<INetworkService>(service);
-            services.AddSingleton<INetworkAdapterService>(service);
         }
         else
         {
+            services.AddSingleton<ICoreManager, CoreManager>();
             services.AddSingleton<IRasDialer, RasDialer>();
-            services.AddSingleton<INetworkService, NetworkService>();
-            services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
         }
 
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
