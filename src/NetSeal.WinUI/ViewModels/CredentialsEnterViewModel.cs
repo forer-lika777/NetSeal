@@ -15,8 +15,6 @@ public partial class CredentialsEnterViewModel : ObservableObject
 {
     private readonly IAppSettings settings;
 
-    private bool initialized;
-
     public CredentialsEnterViewModel(IAppSettings settings)
     {
         this.settings = settings;
@@ -104,11 +102,18 @@ public partial class CredentialsEnterViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanCommit))]
     private async Task CommitAsync()
     {
-        var credentials = new RasCredentials(Username, Password);
-
         try
         {
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+                throw new ArgumentException("账户名或密码不能为空。");
+
+            var credentials = new RasCredentials(Username, Password);
             await settings.RasCredentials.SetValueAsync(credentials);
+        }
+        catch (OperationCanceledException)
+        {
+            CommitErrorMessage = "服务端超时未响应。";
+            throw;
         }
         catch (Exception ex)
         {

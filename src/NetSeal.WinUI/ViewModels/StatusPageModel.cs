@@ -5,6 +5,7 @@ using NetSeal.Core.Models;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
+using NetSeal.Core.Services.Pipe;
 using NetSeal.Core.Services.Ras;
 using NetSeal.WinUI.Services;
 using System;
@@ -12,11 +13,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Formats.Tar;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -27,34 +31,88 @@ using Windows.System;
 
 namespace NetSeal.WinUI.ViewModels;
 
-public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInformationChangedMessage>
+public partial class StatusPageModel : ObservableObject
 {
     private readonly IAppSettings settings;
     private readonly IUiDispatcher dispatcher;
     private readonly ICoreManager coreManager;
-    private readonly IRasDialer rasDialer;
+    private readonly PipeClient pipeClient;
 
     private DateTime lastHandled = DateTime.MinValue;
     private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
     private readonly Lock locker = new();
 
     private CancellationTokenSource? connectCts = null;
-
     private bool initialized = false;
 
     public StatusPageModel(
         IAppSettings appSettings, 
         IUiDispatcher dispatcher, 
-        IRasDialer rasDialer, 
-        ICoreManager coreManager)
+        ICoreManager coreManager, 
+        PipeClient pipeClient)
     {
         this.settings = appSettings;
         this.dispatcher = dispatcher;
-        this.rasDialer = rasDialer;
         this.coreManager = coreManager;
-        StrongReferenceMessenger.Default.Register<NetworkInformationChangedMessage>(this);
+        this.pipeClient = pipeClient;
         _ = InitializeAsync();
-        Windows.Networking.Connectivity.NetworkInformation.NetworkStatusChanged += NetworkInformation_NetworkStatusChanged;
+        coreManager.NetworkStatusChanged += CoreManager_NetworkStatusChanged;
+    }
+
+    private async void CoreManager_NetworkStatusChanged(object? sender, EventArgs e)
+    {
+        lock (locker)
+        {
+            var now = DateTime.UtcNow;
+            if (now - lastHandled < cooldown)
+                return;
+
+            lastHandled = now;
+        }
+
+        await UpdateNetworkStatusAsync();
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
+    [NotifyPropertyChangedFor(nameof(CanModifyCredentials))]
+    [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
+    public partial bool ServiceConnected { get; set; } = false;
+
+    private async Task CycleCheckServiceStatusAsync()
+    {
+        var cts = new CancellationTokenSource(2000);
+
+        while (true)
+        {
+            cts.TryReset();
+            await CheckServiceStatusAsync(cts.Token);
+            await Task.Delay(10000);
+        }
+    }
+
+    private async Task CheckServiceStatusAsync(CancellationToken ct)
+    {
+        var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceStatus });
+        try
+        {
+            await pipeClient.SendCommandAsync(message, ct);
+            await dispatcher.InvokeAsync(() => ServiceConnected = true);
+            return;
+        }
+        catch (TaskCanceledException)
+        {
+            await dispatcher.InvokeAsync(() => ShowDisplayMessage($"服务连接超时！无法连接到服务。"));
+            await dispatcher.InvokeAsync(() => ServiceConnected = false);
+        }
+        catch (Exception ex)
+        {
+            await dispatcher.InvokeAsync(() => ShowDisplayMessage($"服务连接失败！错误信息：{ex}"));
+            await dispatcher.InvokeAsync(() => ServiceConnected = false);
+            connectCts?.Cancel();
+        }
     }
 
     [ObservableProperty]
@@ -100,14 +158,27 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     public partial NetworkItem? SelectedNetwork { get; set; } = null;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     public partial int SelectedNetworkIndex { get; set; } = -1;
 
+    public bool CanModifySelectedNetworkIndex
+    {
+        get => ServiceConnected && !IsLoading && !IsSavingSelectedNetworkIndex;
+    }
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
     public partial bool IsSavingSelectedNetworkIndex { get; set; } = false;
+
+    private bool selectedNetworkIndexInitialized = false;
 
     async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
     {
+        if (!selectedNetworkIndexInitialized)
+        {
+            selectedNetworkIndexInitialized = true;
+            return;
+        }
+
         if (IsSavingSelectedNetworkIndex)
             return;
 
@@ -116,29 +187,31 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
         IsSavingSelectedNetworkIndex = true;
 
-        if (SelectedNetwork is not null && oldValue == -1)
+        try
         {
-            var tcs = new TaskCompletionSource();
-            StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
-
-            try
+            if (SelectedNetwork is not null && oldValue == -1)
             {
+                var tcs = new TaskCompletionSource();
+                StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
+
                 await tcs.Task.WaitAsync(CancellationToken.None);
             }
-            catch (OperationCanceledException)
-            {
-                SelectedNetworkIndex = oldValue;
-                return;
-            }
-            finally
-            {
-                IsSavingSelectedNetworkIndex = false;
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            SelectedNetworkIndex = oldValue;
+            return;
+        }
+        finally
+        {
+            IsSavingSelectedNetworkIndex = false;
         }
 
         SelectedNetwork = Networks[(int)newValue];
         await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
         await settings.HasSavedNetworkAuth.SetValueAsync(true);
+
+        OnPropertyChanged(nameof(SelectedNetwork));
     }
 
     [ObservableProperty]
@@ -149,28 +222,31 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
+    [NotifyPropertyChangedFor(nameof(CanModifyCredentials))]
+    [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
     public partial bool IsLoading { get; set; } = false;
 
     [ObservableProperty]
     public partial string DisplayMessage { get; set; } = string.Empty;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial string AccountId { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    public partial string Password { get; set; } = string.Empty;
-
-    [ObservableProperty]
     public partial bool AutoConnectOnStartup { get; set; } = false;
 
-    [ObservableProperty]
-    public partial bool IsSavingAutoConnectOnStartup { get; set; } = false;
-
-    async partial void OnAutoConnectOnStartupChanging(bool oldValue, bool newValue)
+    public bool CanModifyAutoConnectOnStartup
     {
-        if (IsLoading || IsSavingAutoConnectOnStartup)
+        get => ServiceConnected && !IsLoading && !IsSavingAutoConnectOnStartup;
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
+    public partial bool IsSavingAutoConnectOnStartup { get; set; } = false; 
+
+    async partial void OnAutoConnectOnStartupChanged(bool oldValue, bool newValue)
+    {
+        if (IsSavingAutoConnectOnStartup)
             return;
 
         IsSavingAutoConnectOnStartup = true;
@@ -195,12 +271,18 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     public partial bool ReconnectOnWake { get; set; } = false;
 
+    public bool CanModifyReconnectOnWake
+    {
+        get => ServiceConnected && !IsLoading && !IsSavingReconnectOnWake;
+    }
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
     public partial bool IsSavingReconnectOnWake { get; set; } = false;
 
     async partial void OnReconnectOnWakeChanged(bool oldValue, bool newValue)
     {
-        if (IsLoading || IsSavingReconnectOnWake)
+        if (IsSavingReconnectOnWake)
             return;
 
         IsSavingReconnectOnWake = true;
@@ -225,12 +307,18 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     [ObservableProperty]
     public partial bool ReconnectOnDisconnect { get; set; } = false;
 
+    public bool CanModifyReconnectOnDisconnect
+    {
+        get => ServiceConnected && !IsLoading && !IsSavingReconnectOnDisconnect;
+    }
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
     public partial bool IsSavingReconnectOnDisconnect { get; set; } = false;
 
     async partial void OnReconnectOnDisconnectChanged(bool oldValue, bool newValue)
     {
-        if (IsLoading || IsSavingReconnectOnDisconnect)
+        if (IsSavingReconnectOnDisconnect)
             return;
 
         IsSavingReconnectOnDisconnect = true;
@@ -265,98 +353,80 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
         await dispatcher.InvokeAsync(async () =>
         {
-            bool hasNetworkAuth = false;
-
             try
             {
-                hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
-            }
-            catch (Exception ex)
-            {
-                ShowDisplayMessage("读取配置时发生错误：" + ex);
-            }
+                var cts = new CancellationTokenSource(2000);
+                await CheckServiceStatusAsync(cts.Token);
 
-            if (hasNetworkAuth)
-            {
-                try
+                if (ServiceConnected)
                 {
-                    SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
-                    var credentials = await settings.RasCredentials.GetValueAsync();
-                    AccountId = credentials.Username;
-                    Password = credentials.Password;
+                    bool hasNetworkAuth = false;
+
+                    try
+                    {
+                        hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowDisplayMessage("读取配置时发生错误：" + ex);
+                    }
+
+                    if (hasNetworkAuth)
+                    {
+                        try
+                        {
+                            SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowDisplayMessage("读取凭据时发生错误：" + ex);
+                        }
+                        try
+                        {
+                            SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowDisplayMessage("读取保存的网络时发生错误：" + ex);
+                        }
+                    }
+
+                    try
+                    {
+                        var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
+
+                        // 这三个开关属于服务侧配置，读写都走共享文件
+                        AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
+                        ReconnectOnWake = autoConnect.ReconnectOnWake;
+                        ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowDisplayMessage("读取自动连接配置时发生错误：" + ex);
+                    }
+
+                    var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
+
+                    if (item is not null)
+                        SelectedNetworkIndex = Networks.IndexOf(item);
                 }
-                catch (Exception ex)
+                else
                 {
-                    ShowDisplayMessage("读取凭据时发生错误：" + ex);
-                }
-                try
-                {
-                    SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
-                }
-                catch (Exception ex)
-                {
-                    ShowDisplayMessage("读取保存的网络时发生错误：" + ex);
+                    ShowDisplayMessage("当前服务未连接。");
                 }
             }
-
-            try
+            finally
             {
-                var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
-
-                // 这三个开关属于服务侧配置，读写都走共享文件
-                AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
-                ReconnectOnWake = autoConnect.ReconnectOnWake;
-                ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
+                IsLoading = false;
+                _ = CycleCheckServiceStatusAsync();
             }
-            catch (Exception ex)
-            {
-                ShowDisplayMessage("读取自动连接配置时发生错误：" + ex);
-            }
-
-            var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
-
-            if (item is not null)
-                SelectedNetworkIndex = Networks.IndexOf(item);
-
-            IsLoading = false;
         });
-    }
-
-    public void Receive(NetworkInformationChangedMessage message)
-    {
-        NetworkInformation_NetworkStatusChanged(this);
-    }
-
-    private async void NetworkInformation_NetworkStatusChanged(object sender)
-    {
-        lock (locker)
-        {
-            var now = DateTime.UtcNow;
-            if (now - lastHandled < cooldown)
-                return;
-
-            lastHandled = now;
-        }
-
-        await UpdateNetworkStatusAsync();
-
-        await InitializeAsync();
     }
 
     private async Task UpdateNetworkStatusAsync()
     {
         var status = await coreManager.GetNetworkStatusAsync();
         List<NetworkItem> ethernetNetworks = status.ActiveEthernetNetworks;
-
-        bool hasSavedNetworkAuth = false;
-        try
-        {
-            hasSavedNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowDisplayMessage("更新网络连接状态时发生错误：" + ex);
-        }
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -392,7 +462,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
             IsPppoeConnectionManagedByOutside = status.IsPppoeConnectionManagedByOutside;
             IsNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
 
-            if (!hasSavedNetworkAuth)
+            if (SelectedNetwork is null)
             {
                 ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
                 return;
@@ -406,8 +476,16 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         });
     }
 
+    public bool CanModifyCredentials
+    {
+        get => ServiceConnected && !IsLoading;
+    }
+
     private bool CanConnect()
     {
+        if (!ServiceConnected)
+            return false;
+
         if (IsLoading)
             return false;
 
@@ -438,6 +516,9 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
 
     private bool CanDisconnect()
     {
+        if (!ServiceConnected)
+            return false;
+
         if (IsLoading)
             return false;
 
@@ -449,20 +530,10 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         if (!IsPppoeNetworkConnected)
             return false;
 
-        // 外部控制的 pppoe 网络（仅依据条目名称判断）
-        if (IsPppoeConnectionManagedByOutside)
-            return false;
-
         if (IsConnecting)
             return true;
 
         return true;
-    }
-
-    [RelayCommand]
-    private async Task SetCredentialsAsync()
-    {
-        await rasDialer.RasSetCredentialsAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password);
     }
 
     [RelayCommand(CanExecute = nameof(CanConnect))]
@@ -470,48 +541,24 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
     {
         IsConnecting = true;
 
-        //var credObj = new { user = AccountId, password = Password };
-        //string tempFile = Path.Combine(Path.GetTempPath(), $"netseal_cred_{Guid.NewGuid():N}.json");
-        //File.WriteAllBytes(tempFile, JsonSerializer.SerializeToUtf8Bytes(credObj));
+        ResetCts(ref connectCts);
 
-        //string agentPath = ResolveAgentPath();
-
-        //var psi = new ProcessStartInfo
-        //{
-        //    FileName = agentPath,
-        //    Arguments = $"--set-cred \"{tempFile}\"",
-        //    UseShellExecute = true,
-        //    Verb = "runas"
-        //};
-
-        //try
-        //{
-        //    var process = Process.Start(psi);
-        //    process?.WaitForExit();
-
-        //    if (process?.ExitCode == 0)
-        //    {
-        //        ShowDisplayMessage("凭据保存成功。");
-        //    }
-        //}
-        //catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        //{
-        //    // 用户点了取消 UAC
-        //    File.Delete(tempFile);
-        //    // UI 提示“已取消保存”
-        //}
-        //catch (Exception ex)
-        //{
-        //    File.Delete(tempFile);
-        //    ShowDisplayMessage("凭据保存失败。");
-        //}
-
-        await rasDialer.RasCreateEntryAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password);
-
-        await ExcuteConnectTaskAsync();
-
-        IsConnecting = false;
-        IsPppoeNetworkConnected = true;
+        try
+        {
+            await ExcuteConnectAsync();
+        }
+        catch (RasConnectException ex)
+        {
+            ShowDisplayMessage(ex);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowDisplayMessage("连接请求被中断。");
+        }
+        finally
+        {
+            IsConnecting = false;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanDisconnect))]
@@ -523,43 +570,79 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
             return;
         }
 
-        await ExcuteDisconnectTaskAsync();
-
-        IsConnecting = false;
-        IsPppoeNetworkConnected = false;
-    }
-
-    private async Task ExcuteConnectTaskAsync()
-    {
-        ResetCts(ref connectCts);
-
         try
         {
-            await rasDialer.RasConnectAsync(null, RasEntryName.NetSealServiceEntryName, AccountId, Password, connectCts!.Token);
-
-            await settings.HasSavedNetworkAuth.SetValueAsync(true);
-            //appSettings.AccountId.set
-            //appSettings.Password.Value = Password;
-
-            if (SelectedNetwork is not null)
-                await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
+            await ExcuteDisconnectAsync();
         }
-        catch (Win32Exception ex)
+        catch (RasConnectException ex)
         {
-            await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+            ShowDisplayMessage($"断开连接请求失败: {ex}");
+        }
+        finally
+        {
+            IsConnecting = false;
         }
     }
 
-    private async Task ExcuteDisconnectTaskAsync()
+    private bool CanResetConnection()
     {
+        if (!ServiceConnected)
+            return false;
+
+        if (IsLoading)
+            return false;
+
+        return true;
+    }
+
+    [ObservableProperty]
+    public partial bool IsResettingRasConnection { get; set; } = false;
+
+    [RelayCommand(CanExecute = nameof(CanResetConnection))]
+    private async Task ResetRasConnectionAsync()
+    {
+        IsResettingRasConnection = true;
+
         try
         {
-            await rasDialer.RasDisconnectAsync(null, RasEntryName.NetSealServiceEntryName);
+            await ExcuteDisconnectAsync();
+            await ExcuteConnectAsync();
         }
-        catch (Win32Exception ex)
+        catch (RasConnectException ex)
         {
-            await dispatcher.InvokeAsync(() => ShowDisplayMessage(ex));
+            ShowDisplayMessage($"重置连接时失败：{ex}");
         }
+        finally
+        {
+            IsResettingRasConnection = false;
+        }
+    }
+
+    private async Task ExcuteConnectAsync()
+    {
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect });
+        string raw = await pipeClient.SendCommandAsync(request, connectCts!.Token);
+
+        var response = IpcUtils.ParseResponse(raw);
+
+        if (!response.Success)
+            throw new RasConnectException($"连接请求失败: {response.Error}");
+
+        await settings.HasSavedNetworkAuth.SetValueAsync(true);
+
+        if (SelectedNetwork is not null)
+            await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
+    }
+
+    private async Task ExcuteDisconnectAsync()
+    {
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasDisconnect });
+        string raw = await pipeClient.SendCommandAsync(request);
+
+        var response = IpcUtils.ParseResponse(raw);
+
+        if (!response.Success)
+            throw new RasConnectException($"断开连接请求失败: {response.Error}");
     }
 
     private void ShowDisplayMessage(Exception ex)
@@ -587,33 +670,10 @@ public partial class StatusPageModel : ObservableObject, IRecipient<NetworkInfor
         cts?.Dispose();
         cts = null;
     }
+}
 
-    /// <summary>
-    /// 定位 NetSeal.Agent.exe。
-    /// <para>安装后布局：&lt;安装目录&gt;\Agent\NetSeal.Agent.exe</para>
-    /// <para>开发期布局：仓库根目录下的 NetSeal.Agent\bin\&lt;配置&gt;\net10.0\NetSeal.Agent.exe</para>
-    /// </summary>
-    private static string ResolveAgentPath()
-    {
-        string installed = Path.Combine(AppContext.BaseDirectory, "Agent", "NetSeal.Agent.exe");
-        if (File.Exists(installed))
-            return installed;
-
-        // 开发期：从输出目录向上回溯，寻找仓库中的 NetSeal.Agent 项目输出
-        string? dir = AppContext.BaseDirectory;
-        for (int depth = 0; depth < 6 && !string.IsNullOrEmpty(dir); depth++)
-        {
-            foreach (var configuration in new[] { "Debug", "Release" })
-            {
-                string candidate = Path.Combine(dir, "NetSeal.Agent", "bin", configuration, "net10.0", "NetSeal.Agent.exe");
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        // 找不到时返回安装布局路径，让调用方得到明确的“文件不存在”错误
-        return installed;
-    }
+public class RasConnectException : Exception
+{
+    public RasConnectException() : base() { }
+    public RasConnectException(string message) : base(message) { }
 }

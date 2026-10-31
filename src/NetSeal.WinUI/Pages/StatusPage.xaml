@@ -22,99 +22,108 @@
                     <ColumnDefinition/>
                     <ColumnDefinition Width="360"/>
                 </Grid.ColumnDefinitions>
-                <ScrollView Grid.Column="0"  x:Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
+                <ScrollViewer Grid.Column="0" x:Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
                     <StackPanel Spacing="16" Padding="24">
-                        <Grid HorizontalAlignment="Left" ColumnSpacing="24" Padding="24, 16, 0, 0">
+                        <Grid HorizontalAlignment="Left" ColumnSpacing="24" Padding="24, 16, 0, 8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition/>
                                 <ColumnDefinition/>
                             </Grid.ColumnDefinitions>
                             <FontIcon Grid.Column="0" Glyph="&#xF384;" FontSize="70" Foreground="{StaticResource TextFillColorTertiary}"
-                                          Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                                      Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                             <FontIcon Grid.Column="0" Glyph="&#xE839;" FontSize="70" Foreground="{StaticResource SystemColorHotlightColor}"
-                                          Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                                      Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
                             <StackPanel Grid.Column="1" Spacing="4" >
                                 <TextBlock Text="已连接" FontSize="20"
-                                               Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                                           Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
                                 <TextBlock Text="未连接" FontSize="20"
-                                               Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                                           Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                                 <TextBlock Text="你当前未连接到互联网"
-                                               Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                                           Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                                 <TextBlock Text="{x:Bind ViewModel.ActiveNetworkNames, Mode=OneWay}" HorizontalAlignment="Stretch"
-                                               Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+                                           Visibility="{x:Bind ViewModel.IsInternetAccess, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
                             </StackPanel>
                         </Grid>
+                        
+                        <InfoBar Visibility="{x:Bind ViewModel.ServiceConnected, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"
+                                 IsOpen="{x:Bind ViewModel.ServiceConnected, Converter={StaticResource ReversedBoolConverter}, Mode=OneWay}"
+                                 Title="提示" Message="当前无法连接到 NetSeal 服务。" Severity="Error" IsClosable="False">
+                            <TextBlock Margin="0, 0, 16, 16" TextWrapping="Wrap" 
+                                       Text="相关功能目前尚不可用，请检查 Windows 服务项设置。"/>
+                        </InfoBar>
+                        
                         <InfoBar Visibility="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                                     IsOpen="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Mode=OneWay}" Severity="Informational" IsClosable="False"
-                                     Title="提示" Message="当前已接入互联网，无需进行 pppoe 网络拨号连接。">
+                                 IsOpen="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Mode=OneWay}" Severity="Informational" IsClosable="False"
+                                 Title="提示" Message="当前已接入互联网，无需进行 pppoe 网络拨号连接。">
                             <TextBlock Margin="0, 0, 16, 16" TextWrapping="Wrap">
-                                    <Run Text="当前已连接到：" FontFamily="Microsoft YaHei UI"/>
-                                    <Run Text="{x:Bind ViewModel.ActiveNetworkNames}" FontFamily="Microsoft YaHei UI"/>
+                                <Run Text="当前已连接到：" FontFamily="Microsoft YaHei UI"/>
+                                <Run Text="{x:Bind ViewModel.ActiveNetworkNames}" FontFamily="Microsoft YaHei UI"/>
                             </TextBlock>
                         </InfoBar>
+                        
                         <InfoBar Visibility="{x:Bind ViewModel.IsOtherNetworkAdapterConnected, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                                     IsOpen="{x:Bind ViewModel.IsOtherNetworkAdapterConnected, Mode=OneWay}" Severity="Informational" IsClosable="False" 
-                                     Title="提示" Message="您当前正在使用无线网络（或其他虚拟网络适配器）连接互联网，请连接有线网络（以太网）来使用 pppoe 网络拨号连接。">
+                                 IsOpen="{x:Bind ViewModel.IsOtherNetworkAdapterConnected, Mode=OneWay}" Severity="Informational" IsClosable="False" 
+                                 Title="提示" Message="您当前正在使用无线网络（或其他虚拟网络适配器）连接互联网，请连接有线网络（以太网）来使用 pppoe 网络拨号连接。">
                             <TextBlock Margin="0, 0, 16, 16" TextWrapping="Wrap">
-                                    <Run Text="当前的网络适配器：" FontFamily="Microsoft YaHei UI"/>
-                                    <Run Text="{x:Bind ViewModel.ActiveNetworkAdapterNames}" FontFamily="Microsoft YaHei UI"/>
+                                <Run Text="当前的网络适配器：" FontFamily="Microsoft YaHei UI"/>
+                                <Run Text="{x:Bind ViewModel.ActiveNetworkAdapterNames}" FontFamily="Microsoft YaHei UI"/>
                             </TextBlock>
                         </InfoBar>
+                        
                         <InfoBar Visibility="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                                     IsOpen="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside}" Severity="Informational" IsClosable="False"
-                                     Title="提示" Message="您当前正在使用外部的 pppoe 网络拨号连接。">
+                                 IsOpen="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside}" Severity="Warning" IsClosable="False"
+                                 Title="提示" Message="您当前正在使用外部的 pppoe 网络拨号连接。">
                             <StackPanel Margin="0, 0, 16, 16" Spacing="16">
                                 <TextBlock TextWrapping="Wrap">
-                                        <Run Text="使用此应用的网络拨号条目，以获取自动网络拨号管理功能。已连接到的拨号条目名称：" FontFamily="Microsoft YaHei UI"/>
-                                        <Run Text="{x:Bind ViewModel.ActivePppoeConnectionEntryName}" FontFamily="Microsoft YaHei UI"/>
+                                    <Run Text="使用此应用的网络拨号条目，以获取自动网络拨号管理功能。已连接到的拨号条目名称：" FontFamily="Microsoft YaHei UI"/>
+                                    <Run Text="{x:Bind ViewModel.ActivePppoeConnectionEntryName}" FontFamily="Microsoft YaHei UI"/>
                                 </TextBlock>
-                                <Button Content="重置连接" Style="{StaticResource AccentButtonStyle}"/>
+                                <Button Content="重置连接" Style="{StaticResource AccentButtonStyle}" 
+                                        Command="{x:Bind ViewModel.ResetRasConnectionCommand}"/>
                             </StackPanel>
                         </InfoBar>
+                        
                         <StackPanel Spacing="3">
                             <win:StackPanel.ChildrenTransitions>
                                 <TransitionCollection>
                                     <win:RepositionThemeTransition IsStaggeringEnabled="False"/>
                                 </TransitionCollection>
                             </win:StackPanel.ChildrenTransitions>
+                            
                             <controls:SettingsCard Header="更改网络认证凭据" Description="修改您提供给运营商进行网络认证的用户名和密码">
-                                <Button x:Name="ChangeCredentialsButton" Content="更改凭据" Click="ChangeCredentialsButton_Click"/>
-                                <!--<controls:SettingsCard.Items>
-                                    <controls:SettingsCard ContentAlignment="Left">
-                                        <StackPanel Spacing="16" Margin="0, 16" HorizontalAlignment="Stretch">
-                                            <TextBox x:Name="UsernameEnterBox" Header="用户名" Text="{x:Bind ViewModel.AccountId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                         HorizontalAlignment="Stretch" KeyDown="UsernameEnterBox_KeyDown"/>
-                                            <PasswordBox x:Name="PasswordEnterBox" Header="密码" Password="{x:Bind ViewModel.Password, Mode=TwoWay}" IsPasswordRevealButtonEnabled="True" 
-                                                             HorizontalAlignment="Stretch" GotFocus="PasswordEnterBox_GotFocus" KeyDown="PasswordEnterBox_KeyDown"/>
-                                        </StackPanel>
-                                    </controls:SettingsCard>
-                                </controls:SettingsCard.Items>-->
+                                <Button x:Name="ChangeCredentialsButton" Content="更改凭据" Click="ChangeCredentialsButton_Click"
+                                        IsEnabled="{x:Bind ViewModel.CanModifyCredentials, Mode=OneWay}" />
                             </controls:SettingsCard>
+                            
                             <controls:SettingsCard Header="管理拨号网络拨号网络" Description="选择连接或断开拨号网络" ContentAlignment="Right">
                                 <StackPanel Orientation="Horizontal" Spacing="16" Margin="8" HorizontalAlignment="Right">
                                     <Button x:Name="ConnectButton" Content="连接" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ConnectCommand}"/>
                                     <Button Content="断开连接" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.DisconnectCommand}"/>
                                 </StackPanel>
                             </controls:SettingsCard>
-                            <controls:SettingsCard Header="自动连接拨号网络" Description="网络可用时由后台服务自动为你连接拨号网络">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingAutoConnectOnStartup, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
+                            
+                            <controls:SettingsCard Header="启动时自动连接拨号网络" Description="网络可用时由后台服务自动为你连接拨号网络">
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.AutoConnectOnStartup, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.CanModifyAutoConnectOnStartup, Mode=OneWay}"/>
                             </controls:SettingsCard>
+                            
                             <controls:SettingsCard Header="唤醒后重新连接" Description="系统从睡眠恢复后立即通过后台服务重新拨号">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnWake, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingReconnectOnWake, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnWake, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.CanModifyReconnectOnWake, Mode=OneWay}"/>
                             </controls:SettingsCard>
-                            <controls:SettingsCard Header="启动后重新连接" Description="后台服务启动或开机自启后立即重新拨号">
-                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnDisconnect, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsSavingReconnectOnDisconnect, Mode=OneWay, Converter={StaticResource ReversedBoolConverter}}"/>
+                            
+                            <controls:SettingsCard Header="意外断开时重新连接" Description="拨号网络意外断开时尝试重新连接">
+                                <ToggleSwitch IsOn="{x:Bind ViewModel.ReconnectOnDisconnect, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.CanModifyReconnectOnDisconnect, Mode=OneWay}"/>
                             </controls:SettingsCard>
-                            <TextBlock Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
+                            
+                            <TextBlock Margin="6" Text="{x:Bind ViewModel.DisplayMessage, Mode=OneWay}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </StackPanel>
-                </ScrollView>
+                </ScrollViewer>
                 <Grid Grid.Column="1" >
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="2">
-                            <TextBlock VerticalAlignment="Center">
-                                    <Run Text="已链接到的网络名称：" FontFamily="Microsoft YaHei UI"/>
-                                    <Run Text="{x:Bind ViewModel.SelectedNetwork.Name, Mode=OneWay}" FontFamily="Microsoft YaHei UI"/>
+                            <TextBlock VerticalAlignment="Center" ToolTipService.ToolTip="{x:Bind ViewModel.SelectedNetwork.Id}">
+                                <Run Text="已链接到的网络：" FontFamily="Microsoft YaHei UI"/>
+                                <Run Text="{x:Bind ViewModel.SelectedNetwork.Name, Mode=OneWay}" FontFamily="Microsoft YaHei UI"/>
                             </TextBlock>
                             <Button x:Name="NetworkDesciptionButton" Style="{StaticResource TextBlockButtonStyle}" Width="120" Click="NetworkDesciptionButton_Click">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="3">
@@ -123,14 +132,15 @@
                                 </StackPanel>
                             </Button>
                             <TeachingTip x:Name="NetworkDesciptionTeachingTip" Target="{x:Bind NetworkDesciptionButton}" 
-                                             IsLightDismissEnabled="True"
-                                             Title="NetSeal 如何管理你的网络？" Subtitle="Windows 系统网络根据唯一可识别属性自动为每个网络使用网络签名进行唯一标识。NetSeal 读取系统存储的网络，自动识别当前网络连接并处理拨号连接。在 设置 > 网络和 Internet > 高级网络设置 > 以太网 中查看当前已连接的网络的名称。">
+                                         IsLightDismissEnabled="True"
+                                         Title="NetSeal 如何管理你的网络？" Subtitle="Windows 系统网络根据唯一可识别属性自动为每个网络使用网络签名进行唯一标识。NetSeal 读取系统存储的网络，自动识别当前网络连接并处理拨号连接。在 设置 > 网络和 Internet > 高级网络设置 > 以太网 中查看当前已连接的网络的名称。">
                             </TeachingTip>
                         </StackPanel>
                         <Grid>
                             <ListView ItemsSource="{x:Bind ViewModel.Networks, Mode=OneWay}"
-                                          SelectedIndex="{x:Bind ViewModel.SelectedNetworkIndex, Mode=TwoWay}"
-                                          SelectionMode="Single" VerticalAlignment="Stretch">
+                                      SelectedIndex="{x:Bind ViewModel.SelectedNetworkIndex, Mode=TwoWay}"
+                                      IsEnabled="{x:Bind ViewModel.CanModifySelectedNetworkIndex, Mode=OneWay}"
+                                      SelectionMode="Single" VerticalAlignment="Stretch">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:NetworkItem">
                                         <Grid>
@@ -138,7 +148,7 @@
                                                 <ColumnDefinition/>
                                                 <ColumnDefinition/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{x:Bind Name, Mode=OneWay}"/>
+                                            <TextBlock Grid.Column="0" Text="{x:Bind Name, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind Id}"/>
                                             <TextBlock Grid.Column="1" Text="已选连接" Visibility="{x:Bind IsSelected, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
                                         </Grid>
                                     </DataTemplate>
