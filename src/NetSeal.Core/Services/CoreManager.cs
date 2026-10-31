@@ -53,6 +53,7 @@ public class CoreManager : ICoreManager
             {
                 await UpdateNetworkConnectionStatusAsync(cachedStatus);
                 await UpdatePppoeConnectionStatusAsync(cachedStatus);
+                NetworkStatusChanged?.Invoke(sender, EventArgs.Empty);
             }
             finally
             {
@@ -126,8 +127,13 @@ public class CoreManager : ICoreManager
         }
         else
         {
+            status.IsPppoeNetworkConnected = false;
+            status.IsPppoeConnectionManagedByOutside = false;
+            status.ActivePppoeConnectionEntryName = "";
+
             if (await networkService.GetConnectivityLevelAsync() == NetworkConnectivityLevel.InternetAccess)
             {
+                status.IsNetworkConnectionManagedByOutside = true;
                 status.IsNotPppoeNetworkConnection = true;
             }
         }
