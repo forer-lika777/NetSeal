@@ -27,6 +27,6 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         ShowWindowCommand = command;
-        AppWindow.SetTaskbarIcon("Assets/icon.ico");
+        AppWindow.SetIcon("Assets/icon.ico");
     }
 }
