@@ -12,6 +12,8 @@ public class RemoteSettingsStore : ISettingsStore
 {
     private readonly PipeClient client;
 
+    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(2);
+
     public RemoteSettingsStore(PipeClient client)
     {
         this.client = client;
@@ -19,9 +21,12 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)
     {
+        using var timeoutCts = new CancellationTokenSource(ReadTimeout);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.GetAppSettingsKeyValue, Name = name });
 
-        string raw = await client.SendCommandAsync(request, ct);
+        string raw = await client.SendCommandAsync(request, cts.Token);
 
         var resp = IpcUtils.ParseResponse(raw);
         if (!resp.Success)
@@ -32,9 +37,12 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task SetAsync(string name, string value, CancellationToken ct = default)
     {
+        using var timeoutCts = new CancellationTokenSource(ReadTimeout);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.SetAppSettingsKeyValue, Name = name, Value = value });
 
-        string raw = await client.SendCommandAsync(request, ct);
+        string raw = await client.SendCommandAsync(request, cts.Token);
 
         var resp = IpcUtils.ParseResponse(raw);
         if (!resp.Success)
