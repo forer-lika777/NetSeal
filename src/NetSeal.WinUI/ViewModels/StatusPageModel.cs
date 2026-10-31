@@ -74,20 +74,23 @@ public partial class StatusPageModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
-    [NotifyPropertyChangedFor(nameof(CanModifyCredentials))]
-    [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
-    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
-    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
+    [NotifyCanExecuteChangedFor(
+        nameof(ConnectCommand), 
+        nameof(DisconnectCommand))]
+    [NotifyPropertyChangedFor(
+        nameof(CanModifySelectedNetworkIndex), 
+        nameof(CanModifyCredentials), 
+        nameof(CanModifyAutoConnectOnStartup),
+        nameof(CanModifyReconnectOnWake),
+        nameof(CanModifyReconnectOnDisconnect))]
     public partial bool ServiceConnected { get; set; } = false;
 
     private async Task CycleCheckServiceStatusAsync()
     {
-        var cts = new CancellationTokenSource(2000);
 
         while (true)
         {
-            cts.TryReset();
+            using var cts = new CancellationTokenSource(5000);
             await CheckServiceStatusAsync(cts.Token);
             await Task.Delay(10000);
         }
@@ -102,7 +105,7 @@ public partial class StatusPageModel : ObservableObject
             await dispatcher.InvokeAsync(() => ServiceConnected = true);
             return;
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
             await dispatcher.InvokeAsync(() => ShowDisplayMessage($"服务连接超时！无法连接到服务。"));
             await dispatcher.InvokeAsync(() => ServiceConnected = false);
@@ -125,8 +128,9 @@ public partial class StatusPageModel : ObservableObject
     public partial bool IsOtherNetworkAdapterConnected { get; set; } = false;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(
+        nameof(ConnectCommand), 
+        nameof(DisconnectCommand))]
     public partial bool IsPppoeNetworkConnected { get; set; } = false;
 
     [ObservableProperty]
@@ -155,6 +159,7 @@ public partial class StatusPageModel : ObservableObject
     public partial string ActivePppoeConnectionEntryName { get; set; } = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     public partial NetworkItem? SelectedNetwork { get; set; } = null;
 
     [ObservableProperty]
@@ -169,16 +174,8 @@ public partial class StatusPageModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
     public partial bool IsSavingSelectedNetworkIndex { get; set; } = false;
 
-    private bool selectedNetworkIndexInitialized = false;
-
     async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
     {
-        if (!selectedNetworkIndexInitialized)
-        {
-            selectedNetworkIndexInitialized = true;
-            return;
-        }
-
         if (IsSavingSelectedNetworkIndex)
             return;
 
@@ -189,7 +186,7 @@ public partial class StatusPageModel : ObservableObject
 
         try
         {
-            if (SelectedNetwork is not null && oldValue == -1)
+            if (SelectedNetwork is not null && Networks[newValue].Id != SelectedNetwork.Id)
             {
                 var tcs = new TaskCompletionSource();
                 StrongReferenceMessenger.Default.Send<ChangeNetworkConfirmMessage>(new ChangeNetworkConfirmMessage(tcs));
@@ -215,18 +212,21 @@ public partial class StatusPageModel : ObservableObject
     }
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
+    [NotifyCanExecuteChangedFor(
+        nameof(ConnectCommand), 
+        nameof(DisconnectCommand))]
     public partial bool IsConnecting { get; set; } = false;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DisconnectCommand))]
-    [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
-    [NotifyPropertyChangedFor(nameof(CanModifyCredentials))]
-    [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
-    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
-    [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
+    [NotifyCanExecuteChangedFor(
+        nameof(ConnectCommand),
+        nameof(DisconnectCommand))]
+    [NotifyPropertyChangedFor(
+        nameof(CanModifySelectedNetworkIndex),
+        nameof(CanModifyCredentials),
+        nameof(CanModifyAutoConnectOnStartup),
+        nameof(CanModifyReconnectOnWake),
+        nameof(CanModifyReconnectOnDisconnect))]
     public partial bool IsLoading { get; set; } = false;
 
     [ObservableProperty]
@@ -632,6 +632,8 @@ public partial class StatusPageModel : ObservableObject
 
         if (SelectedNetwork is not null)
             await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
+
+        await Task.Delay(500);
     }
 
     private async Task ExcuteDisconnectAsync()
@@ -643,6 +645,8 @@ public partial class StatusPageModel : ObservableObject
 
         if (!response.Success)
             throw new RasConnectException($"断开连接请求失败: {response.Error}");
+
+        await Task.Delay(500);
     }
 
     private void ShowDisplayMessage(Exception ex)
