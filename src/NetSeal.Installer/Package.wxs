@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-	<Package Name="NetSeal" Manufacturer="YourCompany" Version="1.0.0" UpgradeCode="12345678-1234-1234-1234-123456789012">
+	<Package Name="Reimu's NetSeal" Manufacturer="forer4433" Version="1.0.0" UpgradeCode="E36B8F31-2725-475B-84CB-9DD061E01E03">
 
 		<MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" AllowDowngrades="no" Schedule="afterInstallValidate"/>
 

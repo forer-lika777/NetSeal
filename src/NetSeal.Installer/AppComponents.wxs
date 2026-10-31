@@ -12,7 +12,7 @@
 				<ServiceInstall Id="InstallNetSealService" Name="NetSeal" DisplayName="NetSeal Service" Description="Auto dial service" Type="ownProcess" Start="auto" Account="LocalSystem" ErrorControl="normal">
 					<util:ServiceConfig FirstFailureActionType="restart" SecondFailureActionType="restart" ThirdFailureActionType="restart" RestartServiceDelayInSeconds="10" />
 				</ServiceInstall>
-				<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" />
+				<ServiceControl Id="ControlNetSealService" Name="NetSeal" Stop="both" Remove="uninstall" Wait="yes" Start="install" />
 			</Component>
 
 			<Files Include="!(bindpath.NetSeal.WinUI)\**" Directory="WINUIDIR">
