@@ -45,25 +45,23 @@ public class PipeServer : BackgroundService
         logger.LogInformation("管道服务已启动，等待连接...");
 
         PipeSecurity pipeSecurity = new PipeSecurity();
-
         pipeSecurity.AddAccessRule(new PipeAccessRule(
             new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
             PipeAccessRights.FullControl, AccessControlType.Allow));
+
+        RestartAsAdmin();
+        // 如果你是 LocalSystem 服务，通常不需要 RestartAsAdmin
+        // 如果你需要，请确保它在循环外执行一次
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                if (!IsAdministrator())
-                {
-                    RestartAsAdmin();
-                }
-
-                // 创建命名管道
+                // 注意：这里最好把实例数设大，或者用 -1（无限）
                 using var serverStream = NamedPipeServerStreamAcl.Create(
                     IpcPipeName.NetSealServiceIpcPipeName,
                     PipeDirection.InOut,
-                    6,
+                    10, // 改大一点，或者 -1
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous,
                     4096,
@@ -71,69 +69,11 @@ public class PipeServer : BackgroundService
                     pipeSecurity
                 );
 
-                try
-                {
-                    await serverStream.WaitForConnectionAsync(stoppingToken);
+                await serverStream.WaitForConnectionAsync(stoppingToken);
+                logger.LogDebug("服务已接收到客户端连接");
 
-                    logger.LogDebug("服务已接收到客户端连接");
-
-                    // 一个连接处理多条请求，直到客户端断开
-                    while (!stoppingToken.IsCancellationRequested)
-                    {
-                        // 读取消息长度（4字节）
-                        byte[] lengthBuffer = new byte[4];
-                        int bytesRead = await serverStream.ReadAsync(lengthBuffer, 0, 4, stoppingToken).ConfigureAwait(false);
-
-                        if (bytesRead == 0)
-                        {
-                            logger.LogDebug("客户端已断开连接");
-                            break;   // 客户端断开
-                        }
-
-                        if (bytesRead < 4)
-                        {
-                            logger.LogWarning("收到不完整的消息长度头，仅读取 {BytesRead} 字节", bytesRead);
-                            continue;
-                        }
-
-                        int messageLength = BitConverter.ToInt32(lengthBuffer, 0);
-
-                        if (messageLength <= 0 || messageLength > 65536)  // 最多64KB消息
-                        {
-                            logger.LogWarning("消息长度无效: {Length}", messageLength);
-                            continue;
-                        }
-
-                        // 读取消息体
-                        byte[] messageBuffer = new byte[messageLength];
-                        bytesRead = await serverStream.ReadAsync(messageBuffer, 0, messageLength, stoppingToken).ConfigureAwait(false);
-
-                        if (bytesRead < messageLength)
-                        {
-                            logger.LogWarning("收到不完整的消息体，期望 {Expected} 字节，实际 {Actual} 字节", messageLength, bytesRead);
-                            continue;
-                        }
-
-                        string requestLine = Encoding.UTF8.GetString(messageBuffer);
-                        string responseLine = await HandleRequestAsync(requestLine, stoppingToken).ConfigureAwait(false);
-
-                        // 发送响应：先发长度，再发消息体
-                        byte[] responseBytes = Encoding.UTF8.GetBytes(responseLine);
-                        byte[] responseLength = BitConverter.GetBytes(responseBytes.Length);
-
-                        await serverStream.WriteAsync(responseLength, 0, 4, stoppingToken).ConfigureAwait(false);
-                        await serverStream.WriteAsync(responseBytes, 0, responseBytes.Length, stoppingToken).ConfigureAwait(false);
-                        await serverStream.FlushAsync(stoppingToken).ConfigureAwait(false);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "管道连接处理异常");
-                }
+                // 处理当前连接的请求
+                await HandleClientAsync(serverStream, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -142,12 +82,74 @@ public class PipeServer : BackgroundService
             catch (Exception ex)
             {
                 logger.LogError(ex, "管道通信异常");
-                // 稍微等一下，防止死循环疯狂报错
                 await Task.Delay(1000, stoppingToken);
             }
         }
+    }
 
-        logger.LogInformation("管道服务已停止");
+    // 把处理逻辑抽出来，保持代码清晰
+    private async Task HandleClientAsync(NamedPipeServerStream serverStream, CancellationToken stoppingToken)
+    {
+        try
+        {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                byte[] lengthBuffer = new byte[4];
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(30)); // 客户端 10 秒一次心跳，30 秒没收到就说明死了
+
+                int bytesRead;
+
+                try
+                {
+                    bytesRead = await serverStream.ReadAsync(lengthBuffer, 0, 4, cts.Token);
+                    if (bytesRead == 0)
+                        break; // 客户端断开
+                }
+                catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+                {
+                    logger.LogWarning("客户端心跳超时，强制断开");
+                    break; // 强行跳出循环，释放实例
+                }
+
+                int messageLength = BitConverter.ToInt32(lengthBuffer, 0);
+                if (messageLength <= 0 || messageLength > 65536)
+                    continue;
+
+                byte[] messageBuffer = new byte[messageLength];
+                bytesRead = await ReadExactAsync(serverStream, messageBuffer, messageLength, stoppingToken);
+                if (bytesRead < messageLength)
+                    break; // 读不全，断开
+
+                string requestLine = Encoding.UTF8.GetString(messageBuffer);
+                string responseLine = await HandleRequestAsync(requestLine, stoppingToken).ConfigureAwait(false);
+
+                byte[] responseBytes = Encoding.UTF8.GetBytes(responseLine);
+                byte[] responseLength = BitConverter.GetBytes(responseBytes.Length);
+
+                await serverStream.WriteAsync(responseLength, 0, 4, stoppingToken);
+                await serverStream.WriteAsync(responseBytes, 0, responseBytes.Length, stoppingToken);
+                await serverStream.FlushAsync(stoppingToken);
+            }
+        }
+        catch (IOException)
+        {
+            logger.LogDebug("客户端异常断开");
+        }
+    }
+
+    // 一个强壮的“读满”辅助方法
+    private async Task<int> ReadExactAsync(Stream stream, byte[] buffer, int count, CancellationToken token)
+    {
+        int totalRead = 0;
+        while (totalRead < count)
+        {
+            int read = await stream.ReadAsync(buffer.AsMemory(totalRead, count - totalRead), token);
+            if (read == 0)
+                break; // 流结束
+            totalRead += read;
+        }
+        return totalRead;
     }
 
     public static bool IsAdministrator()
