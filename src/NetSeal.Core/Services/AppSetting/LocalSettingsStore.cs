@@ -13,7 +13,7 @@ public class LocalSettingsStore : ISettingsStore
 
     public LocalSettingsStore()
     {
-        var folder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         filePath = Path.Combine(folder, "NetSeal", "settings.json");
 
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
