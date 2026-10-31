@@ -23,7 +23,7 @@ public class RemoteSettingsStore : ISettingsStore
 
         string raw = await client.SendCommandAsync(request, ct);
 
-        var resp = ParseResponse(raw);
+        var resp = IpcUtils.ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"读取设置失败: {resp.Error}");
 
@@ -36,26 +36,8 @@ public class RemoteSettingsStore : ISettingsStore
 
         string raw = await client.SendCommandAsync(request, ct);
 
-        var resp = ParseResponse(raw);
+        var resp = IpcUtils.ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"保存设置失败: {resp.Error}");
-    }
-
-    private static IpcResponse ParseResponse(string raw)
-    {
-        IpcResponse? resp;
-        try
-        { 
-            resp = JsonSerializer.Deserialize<IpcResponse>(raw); 
-        }
-        catch (JsonException ex) 
-        { 
-            throw new IOException("管道响应格式无效", ex); 
-        }
-
-        if (resp is null)
-            throw new IOException("管道响应为空");
-
-        return resp;
     }
 }
