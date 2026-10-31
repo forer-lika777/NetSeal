@@ -9,7 +9,7 @@
     <XamlUICommand x:Key="ExitApplicationCommand" Label="退出 NetSeal" Description="退出 NetSeal"/>
     <tb:TaskbarIcon x:Key="TrayIcon" Visibility="Visible" ToolTipText="ToolTip" 
                     ContextMenuMode="SecondWindow" LeftClickCommand="{StaticResource ShowWindowCommand}" 
-                    NoLeftClickDelay="True" IconSource="\Assets\icon.ico">
+                    NoLeftClickDelay="True" IconSource="/Assets/reimu1.ico">
         <tb:TaskbarIcon.ContextFlyout>
             <MenuFlyout>
                 <MenuFlyoutItem Command="{StaticResource ShowWindowCommand}" HorizontalAlignment="Stretch" />

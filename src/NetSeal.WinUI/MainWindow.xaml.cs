@@ -27,7 +27,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         ShowWindowCommand = command;
-        AppWindow.SetIcon("Assets/icon.ico");
+        AppWindow.SetIcon("Assets/reimu1.ico");
 
         // 获取当前窗口对应的AppWindow实例
         AppWindow appWindow = this.AppWindow;
