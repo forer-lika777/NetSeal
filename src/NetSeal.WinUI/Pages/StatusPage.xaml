@@ -44,10 +44,10 @@
                     </Grid>
 
                     <InfoBar Visibility="{x:Bind ViewModel.ServiceConnected, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"
-                                 IsOpen="{x:Bind ViewModel.ServiceConnected, Converter={StaticResource ReversedBoolConverter}, Mode=OneWay}"
-                                 Title="提示" Message="NetSeal 服务不可用。" Severity="Error" IsClosable="False">
+                             IsOpen="{x:Bind ViewModel.ServiceConnected, Converter={StaticResource ReversedBoolConverter}, Mode=OneWay}"
+                             Title="提示" Message="NetSeal 服务不可用。" Severity="Error" IsClosable="False">
                         <TextBlock Margin="0, 0, 16, 16" TextWrapping="Wrap" 
-                                       Text="当前无法连接到 NetSeal 服务，相关功能目前尚不可用。请检查 Windows 服务项设置。"/>
+                                   Text="当前无法连接到 NetSeal 服务，相关功能目前尚不可用。请检查 Windows 服务项设置。"/>
                     </InfoBar>
 
                     <InfoBar Visibility="{x:Bind ViewModel.IsNotPppoeNetworkConnection, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
@@ -100,9 +100,9 @@
                         </StackPanel>
                         <Grid>
                             <ListView ItemsSource="{x:Bind ViewModel.Networks, Mode=OneWay}"
-                                          SelectedIndex="{x:Bind ViewModel.SelectedNetworkIndex, Mode=TwoWay}"
-                                          IsEnabled="{x:Bind ViewModel.CanModifySelectedNetworkIndex, Mode=OneWay}"
-                                          SelectionMode="Single" VerticalAlignment="Stretch">
+                                      SelectedIndex="{x:Bind ViewModel.SelectedNetworkIndex, Mode=TwoWay}"
+                                      IsEnabled="{x:Bind ViewModel.CanModifySelectedNetworkIndex, Mode=OneWay}"
+                                      SelectionMode="Single" VerticalAlignment="Stretch">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:NetworkItem">
                                         <Grid>
@@ -117,7 +117,7 @@
                                 </ListView.ItemTemplate>
                             </ListView>
                             <TextBlock Text="未找到可用网络连接" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Visibility="{x:Bind ViewModel.HasAvailableNetworks, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
+                                       Visibility="{x:Bind ViewModel.HasAvailableNetworks, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"/>
                         </Grid>
                     </StackPanel>
 
@@ -135,6 +135,7 @@
 
                         <controls:SettingsCard Header="管理拨号网络拨号网络" Description="选择连接或断开拨号网络" ContentAlignment="Right">
                             <StackPanel Orientation="Horizontal" Spacing="16" Margin="8" HorizontalAlignment="Right">
+                                <ProgressRing Height="20" Width="20" IsIndeterminate="True" IsActive="{x:Bind ViewModel.IsConnectingOrDisconnecting, Mode=OneWay}"/>
                                 <Button x:Name="ConnectButton" Content="连接" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ConnectCommand}"/>
                                 <Button Content="断开连接" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.DisconnectCommand}"/>
                             </StackPanel>

@@ -536,10 +536,14 @@ public partial class StatusPageModel : ObservableObject
         return true;
     }
 
+    [ObservableProperty]
+    public partial bool IsConnectingOrDisconnecting { get; set; } = false;
+
     [RelayCommand(CanExecute = nameof(CanConnect))]
     private async Task ConnectAsync()
     {
         IsConnecting = true;
+        IsConnectingOrDisconnecting = true;
 
         ResetCts(ref connectCts);
 
@@ -558,12 +562,14 @@ public partial class StatusPageModel : ObservableObject
         finally
         {
             IsConnecting = false;
+            IsConnectingOrDisconnecting = false;
         }
     }
 
     [RelayCommand(CanExecute = nameof(CanDisconnect))]
     private async Task DisconnectAsync()
     {
+        IsConnectingOrDisconnecting = true;
         if (IsConnecting)
         {
             CancelCts(ref connectCts);
@@ -581,6 +587,7 @@ public partial class StatusPageModel : ObservableObject
         finally
         {
             IsConnecting = false;
+            IsConnectingOrDisconnecting = false;
         }
     }
 
