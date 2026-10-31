@@ -625,9 +625,14 @@ public class RasDialer : IRasDialer
         handle = conn;
         if (ret != ERROR_SUCCESS)
         {
-            ret = RasHangUp(conn);
-            if (ret != ERROR_SUCCESS)
-                throw new Win32Exception((int)ret, $"断开拨号连接失败: {GetErrorString(ret)}");
+            uint hangupRet = RasHangUp(conn); // 程序最终应当断开连接，即使连接并未成功。
+            if (hangupRet != ERROR_SUCCESS)
+            {
+                var exceptions = new List<Exception>();
+                exceptions.Add(new Win32Exception((int)ret, $"拨号连接失败：{GetErrorString(ret)}"));
+                exceptions.Add(new Win32Exception((int)hangupRet, $"断开拨号连接失败：{GetErrorString(ret)}"));
+                throw new AggregateException(exceptions);
+            }
             throw new Win32Exception((int)ret, $"拨号连接失败: {GetErrorString(ret)}");
         }
     }
@@ -639,14 +644,12 @@ public class RasDialer : IRasDialer
     /// <exception cref="InvalidOperationException"></exception>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     /// <exception cref="Win32Exception"></exception>
-    private static void Disconnect(string entryName)
+    private static void Disconnect(string? entryName = null)
     {
-        if (string.IsNullOrEmpty(entryName))
-            throw new ArgumentException("输入参数必须为非空值。");
-
         var connection = GetActivePppoeConnection() ?? throw new InvalidOperationException("当前没有活跃的连接项目。");
         
-        ArgumentOutOfRangeException.ThrowIfNotEqual(entryName, connection.entryName);
+        if (entryName != null)
+            ArgumentOutOfRangeException.ThrowIfNotEqual(entryName, connection.entryName);
 
         uint ret = RasHangUp(connection!.handle);
 
@@ -893,9 +896,9 @@ public class RasDialer : IRasDialer
 
     public async Task RasCreateEntryAsync(string? phoneBook, string entryName, string? username, string? password)
     {
-        if (await Task.Run(() => IsEntryExists(null, entryName)))
+        if (!await Task.Run(() => IsEntryExists(phoneBook, entryName)))
         {
-            await Task.Run(() => CreateEntry(null, entryName, username, password));
+            await Task.Run(() => CreateEntry(phoneBook, entryName, username, password));
         }
     }
 
@@ -916,7 +919,8 @@ public class RasDialer : IRasDialer
             return null;
 
         return new RasConnection 
-        { 
+        {
+            PhoneBookName = conn.phoneBook,
             EntryName = conn.entryName,
             Handle = conn.handle
         };
@@ -931,7 +935,7 @@ public class RasDialer : IRasDialer
         }, cancellationToken);
     }
 
-    public async Task RasDisconnectAsync(string? phoneBook, string entryName, CancellationToken cancellationToken = default)
+    public async Task RasDisconnectAsync(string? entryName, CancellationToken cancellationToken = default)
     {
         await Task.Run(() => Disconnect(entryName), cancellationToken);
     }

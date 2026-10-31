@@ -22,7 +22,7 @@ public interface IRasDialer
     /// </summary>
     /// <param name="phoneBook">
     /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
-    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// 若要使用当前用户默认的电话簿，请将此参数设为 null。
     /// </param>
     /// <param name="entryName">
     /// 条目名称。
@@ -43,7 +43,7 @@ public interface IRasDialer
     /// </summary>
     /// <param name="phoneBook">
     /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
-    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// 若要使用当前用户默认的电话簿，请将此参数设为 null。
     /// </param>
     /// <param name="entryName">
     /// 条目名称。
@@ -56,7 +56,7 @@ public interface IRasDialer
     /// </summary>
     /// <param name="phoneBook">
     /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
-    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// 若要使用当前用户默认的电话簿，请将此参数设为 null。
     /// </param>
     /// <param name="entryName">
     /// 条目名称。
@@ -75,7 +75,7 @@ public interface IRasDialer
     /// </summary>
     /// <param name="phoneBook">
     /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
-    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// 若要使用当前用户默认的电话簿，请将此参数设为 null。
     /// </param>
     /// <param name="entryName">
     /// 条目名称。
@@ -97,16 +97,16 @@ public interface IRasDialer
 
     /// <summary>
     /// <para>断开指定电话簿中的指定条目。</para>
-    /// <para>请注意，如果条目连接不是在当前进程会话创建的（比如在设置中创建的连接，或自上次连接以来此应用有重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将不会执行断开操作。
-    /// 请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
+    /// <para>请注意，如果进程会话不具备管理员权限，并且如果条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
+    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
     /// 并在方法返回 false 时，使用其他方法来断开此连接（例如配置此连接的网络适配器）。</para>
     /// </summary>
     /// <param name="phoneBook">
     /// 该字符串指定电话簿（PBK）文件的完整路径和文件名。
-    /// 若要使用当前默认的电话簿，请将此参数设为 null。
+    /// 若要使用当前用户默认的电话簿，请将此参数设为 null。
     /// </param>
     /// <param name="entryName">
     /// 条目名称。
@@ -116,13 +116,13 @@ public interface IRasDialer
     /// </param>
     /// <returns></returns>
     /// <exception cref="TaskCanceledException"></exception>
-    public Task RasDisconnectAsync(string? phoneBook, string entryName, CancellationToken cancellationToken = default);
+    public Task RasDisconnectAsync(string? entryName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// <para>检查条目连接是否在当前进程会话下创建。</para>
-    /// <para>请注意，如果条目连接不是在当前进程会话创建的（比如在设置中创建的连接，或自上次连接以来此应用有重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将不会执行断开操作。
-    /// 请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
+    /// <para>请注意，如果进程会话不具备管理员权限，并且条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
+    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
     /// 并在方法返回 false 时，使用其他方法来断开此连接（例如配置此连接的网络适配器）。</para>
@@ -136,9 +136,9 @@ public interface IRasDialer
 
     /// <summary>
     /// <para>检查条目连接是否在当前进程会话下创建。</para>
-    /// <para>请注意，如果条目连接不是在当前进程会话创建的（比如在设置中创建的连接，或自上次连接以来此应用有重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将不会执行断开操作。
-    /// 请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
+    /// <para>请注意，如果进程会话不具备管理员权限，并且如果条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
+    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
     /// 并在方法返回 false 时，使用其他方法来断开此连接（例如配置此连接的网络适配器）。</para>
