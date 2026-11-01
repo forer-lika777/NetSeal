@@ -12,6 +12,12 @@ builder.Services.AddWindowsService(options =>
     options.ServiceName = "NetSeal";
 });
 
+builder.Logging.AddEventLog(settings =>
+{
+    settings.SourceName = "NetSeal";
+    settings.LogName = "Application";
+});
+
 builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
 
 var systemFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
