@@ -45,6 +45,8 @@ public partial class StatusPageModel : ObservableObject
     private CancellationTokenSource? connectCts = null;
     private bool initialized = false;
 
+    private bool settingsLoadSuccess = false;
+
     public StatusPageModel(
         INetworkSettings appSettings, 
         IUiDispatcher dispatcher, 
@@ -85,6 +87,15 @@ public partial class StatusPageModel : ObservableObject
         nameof(CanModifyReconnectOnDisconnect))]
     public partial bool ServiceConnected { get; set; } = false;
 
+    async partial void OnServiceConnectedChanged(bool value)
+    {
+        if (value)
+        {
+            if (!settingsLoadSuccess)
+                await UpdateNetworkSettingsAsync();
+        }
+    }
+
     private async Task CycleCheckServiceStatusAsync()
     {
 
@@ -102,8 +113,10 @@ public partial class StatusPageModel : ObservableObject
         try
         {
             await pipeClient.SendCommandAsync(message, ct);
-            await dispatcher.InvokeAsync(() => ServiceConnected = true);
-            return;
+            await dispatcher.InvokeAsync(async () =>
+            {
+                ServiceConnected = true;
+            });
         }
         catch (OperationCanceledException)
         {
@@ -353,74 +366,53 @@ public partial class StatusPageModel : ObservableObject
 
         await dispatcher.InvokeAsync(async () =>
         {
-            try
+            var cts = new CancellationTokenSource(2000);
+            await CheckServiceStatusAsync(cts.Token);
+
+            if (ServiceConnected)
             {
-                var cts = new CancellationTokenSource(2000);
-                await CheckServiceStatusAsync(cts.Token);
-
-                if (ServiceConnected)
-                {
-                    bool hasNetworkAuth = false;
-
-                    try
-                    {
-                        hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        ShowDisplayMessage("读取配置时发生错误：" + ex);
-                    }
-
-                    if (hasNetworkAuth)
-                    {
-                        try
-                        {
-                            SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowDisplayMessage("读取凭据时发生错误：" + ex);
-                        }
-                        try
-                        {
-                            SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowDisplayMessage("读取保存的网络时发生错误：" + ex);
-                        }
-                    }
-
-                    try
-                    {
-                        var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
-
-                        // 这三个开关属于服务侧配置，读写都走共享文件
-                        AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
-                        ReconnectOnWake = autoConnect.ReconnectOnWake;
-                        ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
-                    }
-                    catch (Exception ex)
-                    {
-                        ShowDisplayMessage("读取自动连接配置时发生错误：" + ex);
-                    }
-
-                    var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
-
-                    if (item is not null)
-                        SelectedNetworkIndex = Networks.IndexOf(item);
-                }
-                else
-                {
-                    ShowDisplayMessage("当前服务未连接。");
-                }
+                await UpdateNetworkSettingsAsync();
             }
-            finally
+            else
             {
-                IsLoading = false;
-                _ = CycleCheckServiceStatusAsync();
+                ShowDisplayMessage("当前服务未连接。");
             }
+
+            IsLoading = false;
+            _ = CycleCheckServiceStatusAsync();
         });
+    }
+
+    private async Task UpdateNetworkSettingsAsync()
+    {
+        try
+        {
+            bool hasNetworkAuth = false;
+
+            hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
+
+            if (hasNetworkAuth)
+            {
+                SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
+                var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
+
+                if (item is not null)
+                    SelectedNetworkIndex = Networks.IndexOf(item);
+            }
+
+            var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
+
+            // 这三个开关属于服务侧配置，读写都走共享文件
+            AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
+            ReconnectOnWake = autoConnect.ReconnectOnWake;
+            ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
+
+            settingsLoadSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            ShowDisplayMessage($"加载配置项时发生错误：{ex}");
+        }
     }
 
     private async Task UpdateNetworkStatusAsync()
