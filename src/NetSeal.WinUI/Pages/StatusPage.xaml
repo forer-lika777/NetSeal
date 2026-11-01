@@ -13,8 +13,14 @@
     <Grid x:Name="RootGrid">
         <ProgressBar IsIndeterminate="True" VerticalAlignment="Top" Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}"/>
         <Grid>
-            <ScrollViewer Grid.Column="0" Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
-                <StackPanel Spacing="16" Padding="24" Margin="16, 32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="96"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Margin="32, 44, 0, 0" Text="状态设置" FontSize="32"/>
+
+            <ScrollViewer Grid.Row="1" Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
+                <StackPanel Spacing="16" Padding="24, 0, 24, 64" Margin="16, 0">
                     <win:StackPanel.ChildrenTransitions>
                         <TransitionCollection>
                             <win:RepositionThemeTransition IsStaggeringEnabled="False"/>
