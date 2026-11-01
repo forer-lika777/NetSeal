@@ -11,12 +11,13 @@ public class LocalSettingsStore : ISettingsStore
     private readonly string filePath;
     private readonly SemaphoreSlim semaphore = new(1, 1);
 
-    public LocalSettingsStore()
+    public LocalSettingsStore(string filePath)
     {
-        var folder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        filePath = Path.Combine(folder, "NetSeal", "settings.json");
+        this.filePath = filePath;
+        var dir = Path.GetDirectoryName(filePath);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
     }
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)

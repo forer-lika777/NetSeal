@@ -23,6 +23,7 @@ using NetSeal.WinUI.Services;
 using NetSeal.WinUI.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.SymbolStore;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -33,13 +34,8 @@ using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace NetSeal.WinUI;
-/// <summary>
-/// Provides application-specific behavior to supplement the default Application class.
-/// </summary>
+
 public partial class App : Application
 {
     public Window? Window { get; set; }
@@ -82,14 +78,22 @@ public partial class App : Application
 
         services.AddSingleton<StatusPageModel>();
         services.AddTransient<CredentialsEnterViewModel>();
-        services.AddSingleton<IAppSettings, AppSettings>();
-        services.AddSingleton<ISettingsStore, RemoteSettingsStore>();
+        services.AddSingleton<SettingsPageModel>();
+        services.AddSingleton<INetworkSettings, NetworkSettings>();
+        services.AddKeyedSingleton<ISettingsStore, RemoteSettingsStore>("remote");
+
+        var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var systemPath = System.IO.Path.Combine(userFolder, "NetSeal", "network_settings.json");
+        services.AddKeyedSingleton<ISettingsStore>("local", new LocalSettingsStore(systemPath));
+
         services.AddSingleton<ICoreManager, CoreManager>();
         services.AddSingleton<PipeClient>();
 
         services.AddSingleton<INetworkService, NetworkService>();
+        services.AddSingleton<IUiSettings, UiSettings>();
         services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
 
+#if DEBUG
         bool mock = false;
 
         if (mock)
@@ -101,9 +105,12 @@ public partial class App : Application
         }
         else
         {
+#endif
             services.AddSingleton<ICoreManager, CoreManager>();
             services.AddSingleton<IRasDialer, RasDialer>();
+#if DEBUG
         }
+#endif
 
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
         
@@ -118,6 +125,7 @@ public partial class App : Application
     {
         CreateTaskBarIcon();
         ShowWindow();
+        Services.GetRequiredService<SettingsPageModel>();
         Services.GetRequiredService<StatusPageModel>();
     }
 

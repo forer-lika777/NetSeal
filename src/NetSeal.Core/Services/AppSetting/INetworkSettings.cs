@@ -2,7 +2,7 @@
 
 namespace NetSeal.Core.Services.AppSetting;
 
-public interface IAppSettings
+public interface INetworkSettings
 {
     public IKeyItem<bool> HasSavedNetworkAuth { get; }
     public IKeyItem<NetworkItem> SelectedNetwork { get; }

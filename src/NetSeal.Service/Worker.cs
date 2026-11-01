@@ -29,7 +29,7 @@ public class Worker : BackgroundService
 
     private readonly ILogger<Worker> logger;
     private readonly IRasDialer rasDialer;
-    private readonly IAppSettings settings;
+    private readonly INetworkSettings settings;
     private readonly ICoreManager coreManager;
     private readonly ServiceState serviceState;
 
@@ -81,7 +81,7 @@ public class Worker : BackgroundService
 
     public Worker(ILogger<Worker> logger, 
         IRasDialer rasDialer, 
-        IAppSettings settings, 
+        INetworkSettings settings, 
         ICoreManager coreManager,
         ServiceState serviceState)
     {

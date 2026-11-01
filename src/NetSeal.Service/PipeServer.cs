@@ -14,7 +14,7 @@ namespace NetSeal.Service;
 public class PipeServer : BackgroundService
 {
     private readonly ILogger<PipeServer> logger;
-    private readonly IAppSettings appSettings;
+    private readonly INetworkSettings appSettings;
     private readonly ISettingsStore settingsStore;
     private readonly ServiceState serviceState;
     private readonly Worker worker;
@@ -28,7 +28,7 @@ public class PipeServer : BackgroundService
 
     public PipeServer(
         ILogger<PipeServer> logger, 
-        IAppSettings appSettings, 
+        INetworkSettings appSettings, 
         ISettingsStore settingsStore, 
         ServiceState serviceState,
         Worker worker)

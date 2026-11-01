@@ -13,9 +13,9 @@ namespace NetSeal.WinUI.ViewModels;
 
 public partial class CredentialsEnterViewModel : ObservableObject
 {
-    private readonly IAppSettings settings;
+    private readonly INetworkSettings settings;
 
-    public CredentialsEnterViewModel(IAppSettings settings)
+    public CredentialsEnterViewModel(INetworkSettings settings)
     {
         this.settings = settings;
     }

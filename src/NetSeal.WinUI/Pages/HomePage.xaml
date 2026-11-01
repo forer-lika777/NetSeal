@@ -8,7 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel Margin="50, 60">
-        <TextBlock Text="欢迎来到 NetSeal" FontSize="30"/>
-    </StackPanel>
+    <ScrollViewer>
+        <StackPanel Margin="50, 60">
+            <TextBlock Text="欢迎来到 NetSeal" FontSize="30"/>
+        </StackPanel>
+    </ScrollViewer>
 </Page>

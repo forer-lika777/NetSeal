@@ -12,13 +12,16 @@ builder.Services.AddWindowsService(options =>
     options.ServiceName = "NetSeal";
 });
 
-builder.Services.AddSingleton<IRasDialer, RasDialer>();
-builder.Services.AddSingleton<IAppSettings, AppSettings>();
-builder.Services.AddSingleton<ISettingsStore, LocalSettingsStore>();
+builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
+
+var systemFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+var systemPath = Path.Combine(systemFolder, "NetSeal", "network_settings.json");
+builder.Services.AddKeyedSingleton<ISettingsStore>("local", new LocalSettingsStore(systemPath));
 
 builder.Services.AddSingleton<INetworkService, NetworkService>();
 builder.Services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
 
+#if DEBUG
 bool mock = false;
 
 if (mock)
@@ -29,9 +32,12 @@ if (mock)
 }
 else
 {
+#endif
     builder.Services.AddSingleton<ICoreManager, CoreManager>();
     builder.Services.AddSingleton<IRasDialer, RasDialer>();
+#if DEBUG
 }
+#endif
 
 builder.Services.AddSingleton<Worker>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Worker>());

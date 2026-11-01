@@ -33,7 +33,7 @@ namespace NetSeal.WinUI.ViewModels;
 
 public partial class StatusPageModel : ObservableObject
 {
-    private readonly IAppSettings settings;
+    private readonly INetworkSettings settings;
     private readonly IUiDispatcher dispatcher;
     private readonly ICoreManager coreManager;
     private readonly PipeClient pipeClient;
@@ -46,7 +46,7 @@ public partial class StatusPageModel : ObservableObject
     private bool initialized = false;
 
     public StatusPageModel(
-        IAppSettings appSettings, 
+        INetworkSettings appSettings, 
         IUiDispatcher dispatcher, 
         ICoreManager coreManager, 
         PipeClient pipeClient)

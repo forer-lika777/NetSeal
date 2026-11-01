@@ -1,4 +1,5 @@
-﻿using NetSeal.Core.Models;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NetSeal.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -13,7 +14,7 @@ using System.Text.Json.Serialization;
 
 namespace NetSeal.Core.Services.AppSetting;
 
-public class AppSettings(ISettingsStore settingsStore) : IAppSettings
+public class NetworkSettings([FromKeyedServices("remote")] ISettingsStore settingsStore) : INetworkSettings
 {
     private readonly ISettingsStore settingsStore = settingsStore;
 
