@@ -195,13 +195,13 @@ public class PipeServer : BackgroundService
         catch (JsonException ex)
         {
             logger.LogWarning(ex, "请求格式无效");
-            return SerializeError($"请求格式无效: {ex.Message}");
+            return IpcResponse.SerializeFail($"请求格式无效: {ex.Message}");
         }
 
         if (request is null || string.IsNullOrEmpty(request.Cmd))
         {
             logger.LogWarning("请求缺少 cmd");
-            return SerializeError("请求缺少 cmd");
+            return IpcResponse.SerializeFail("请求缺少 cmd");
         }
 
         try
@@ -209,7 +209,7 @@ public class PipeServer : BackgroundService
             switch (request.Cmd)
             {
                 case IpcCommands.CheckServiceStatus:
-                    return JsonSerializer.Serialize(IpcResponse.Ok(), JsonOptions);
+                    return IpcResponse.SerializeOk();
 
                 case IpcCommands.GetAppSettingsKeyValue:
                     return await HandleGetAsync(request, ct);
@@ -225,13 +225,13 @@ public class PipeServer : BackgroundService
 
                 default:
                     logger.LogWarning("未知命令: {Cmd}", request.Cmd);
-                    return SerializeError($"未知命令: {request.Cmd}");
+                    return IpcResponse.SerializeFail($"未知命令: {request.Cmd}");
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "处理命令 {Cmd} 失败", request.Cmd);
-            return SerializeError(ex.Message);
+            return IpcResponse.SerializeFail(ex.Message);
         }
     }
 
@@ -240,25 +240,25 @@ public class PipeServer : BackgroundService
         if (string.IsNullOrEmpty(request.Name))
         {
             logger.LogWarning("GET 请求缺少 name 参数");
-            return SerializeError("GET 缺少 name");
+            return IpcResponse.SerializeFail("GET 缺少 name");
         }
 
         string? value = await settingsStore.GetAsync(request.Name, ct).ConfigureAwait(false);
-        return JsonSerializer.Serialize(new IpcResponse { Success = true, Value = value }, JsonOptions);
+        return IpcResponse.SerializeOk(value);
     }
 
     private async Task<string> HandleSetAsync(IpcRequest request, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(request.Name))
         {
-            logger.LogWarning("SET 请求缺少 name 参数");
-            return SerializeError("SET 缺少 name");
+            logger.LogError("SET 请求缺少 name 参数");
+            return IpcResponse.SerializeFail("SET 缺少 name");
         }
 
         if (string.IsNullOrEmpty(request.Value))
         {
-            logger.LogWarning("SET 请求缺少 value 参数");
-            return SerializeError("SET 缺少 value");
+            logger.LogError("SET 请求缺少 value 参数");
+            return IpcResponse.SerializeFail("SET 缺少 value");
         }
 
         await settingsStore.SetAsync(request.Name, request.Value, ct).ConfigureAwait(false);
@@ -268,8 +268,7 @@ public class PipeServer : BackgroundService
             logger.LogInformation("自动连接策略已更新，通知 Worker");
             await worker.UpdateAutoConnectPolicyAsync();
         }
-
-        if (request.Name == appSettings.RasCredentials.Name)
+        else if (request.Name == appSettings.RasCredentials.Name)
         {
             logger.LogInformation("RAS 凭证已更新，通知 Worker");
             await worker.UpdateRasCredentrialsAsync();
@@ -280,7 +279,7 @@ public class PipeServer : BackgroundService
             await worker.UpdateSelectedNetworkAsync();
         }
 
-        return JsonSerializer.Serialize(new IpcResponse { Success = true }, JsonOptions);
+        return IpcResponse.SerializeOk();
     }
 
     private async Task<string> HandleConnectRequestAsync(CancellationToken ct)
@@ -295,7 +294,7 @@ public class PipeServer : BackgroundService
         catch (Exception ex)
         {
             logger.LogError(ex, "处理连接请求时发生异常");
-            return SerializeError($"处理连接请求失败: {ex.Message}");
+            return IpcResponse.SerializeFail($"处理连接请求失败: {ex.Message}");
         }
     }
 
@@ -306,19 +305,17 @@ public class PipeServer : BackgroundService
             try
             {
                 await worker.DisconnectRequest(ct).ConfigureAwait(false);
-                return JsonSerializer.Serialize(new IpcResponse { Success = true }, JsonOptions);
+                return IpcResponse.SerializeOk();
             }
             catch (JsonException ex)
             {
-                return JsonSerializer.Serialize(new IpcResponse { Success = false, Error = $"无法识别的输入值。值预期类型是：{typeof(RasConnection)}，错误信息：{ex}" }, JsonOptions);
+                return IpcResponse.SerializeFail($"无法识别的输入值。值预期类型是：{typeof(RasConnection)}，错误信息：{ex}");
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "处理断开连接请求时发生异常");
-            return SerializeError($"处理断开连接请求失败: {ex.Message}");
+            return IpcResponse.SerializeFail($"处理断开连接请求失败: {ex.Message}");
         }
     }
-
-    private static string SerializeError(string error) => JsonSerializer.Serialize(new IpcResponse { Success = false, Error = error }, JsonOptions);
 }
