@@ -593,7 +593,7 @@ public partial class StatusPageModel : ObservableObject
             await ExcuteDisconnectAsync();
             await ExcuteConnectAsync();
         }
-        catch (RasConnectException ex)
+        catch (Exception ex)
         {
             ShowDisplayMessage($"重置连接时失败：{ex}");
         }
