@@ -28,6 +28,8 @@ builder.Services.AddSingleton<ISettingsStore>(localStore);
 builder.Services.AddSingleton<INetworkService, NetworkService>();
 builder.Services.AddSingleton<INetworkAdapterService, NetworkAdapterService>();
 
+builder.Services.AddSingleton(TimeProvider.System);
+
 #if DEBUG
 bool mock = false;
 

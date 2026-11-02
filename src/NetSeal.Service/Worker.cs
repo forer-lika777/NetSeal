@@ -11,7 +11,7 @@ public class Worker : BackgroundService
     /// <summary>
     /// 轮询间隔。共享配置与连接状态都在每一轮重新读取，UI 修改后最多一个间隔生效。
     /// </summary>
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+    private static TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// 单轮实际耗时明显超过此阈值时，视为刚从睡眠/休眠中恢复。
@@ -31,6 +31,7 @@ public class Worker : BackgroundService
     private readonly INetworkSettings settings;
     private readonly ICoreManager coreManager;
     private readonly ServiceState serviceState;
+    private readonly TimeProvider timeProvider;
 
     // 线程同步锁
     private readonly object lockObject = new();
@@ -41,7 +42,7 @@ public class Worker : BackgroundService
     private bool serviceJustStarted = true;
     private int connectRetryCount = -1;
     private const int connectRetryLimit = 5;
-    private DateTime lastCheckTime = DateTime.Now;
+    private DateTime lastCheckTime;
     //private DateTime nextRetryTime = DateTime.MinValue;
     //private int backoffSeconds = 0;
 
@@ -82,13 +83,16 @@ public class Worker : BackgroundService
         IRasDialer rasDialer,
         INetworkSettings settings,
         ICoreManager coreManager,
-        ServiceState serviceState)
+        ServiceState serviceState,
+        TimeProvider timeProvider)
     {
         this.logger = logger;
         this.rasDialer = rasDialer;
         this.settings = settings;
         this.coreManager = coreManager;
         this.serviceState = serviceState;
+        this.timeProvider = timeProvider;
+        lastCheckTime = timeProvider.GetLocalNow().DateTime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -96,22 +100,27 @@ public class Worker : BackgroundService
         logger.LogInformation("NetSeal 服务已启动。");
 
         logger.LogInformation("正在等待其他服务项启动...");
-        await Task.Delay(3000, stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(3), timeProvider, stoppingToken).ConfigureAwait(false);
 
-        logger.LogInformation("正在加载网络信息...");
-        await UpdateNetworkStatusAsync();
+        //await UpdateNetworkStatusAsync().ConfigureAwait(false);
 
         logger.LogInformation("正在加载相关配置...");
-        autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
-        rasCredentials = await settings.RasCredentials.GetValueAsync();
+        autoConnect = await settings.AutoConnectPolicy.GetValueAsync().ConfigureAwait(false);
+        rasCredentials = await settings.RasCredentials.GetValueAsync().ConfigureAwait(false);
 
         EnsurePhonebookExists(phoneBookPath);
-        await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "");
+        await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "").ConfigureAwait(false);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!serviceJustStarted)
-                await serviceState.WaitForReloadAsync(PollInterval, stoppingToken);
+            {
+                logger.LogDebug("正在等待下次轮询：{Interval} 秒。", PollInterval.TotalSeconds);
+                if (await serviceState.WaitForReloadAsync(PollInterval, stoppingToken).ConfigureAwait(false))
+                {
+                    logger.LogDebug("由于触发器提前终止，轮询未完成等待;");
+                }
+            }
 
             // 每次循环都更新网络状态
             await UpdateNetworkStatusAsync();
@@ -140,9 +149,7 @@ public class Worker : BackgroundService
                 logger.LogInformation("拨号连接成功。");
                 connectRetryCount = -1;
                 lastConnectionSucceeded = true;
-                //backoffSeconds = 0;
-                //nextRetryTime = DateTime.MinValue;
-                //ConnectInvokeLocker.Wait();
+                PollInterval = TimeSpan.FromSeconds(10);
                 ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = true });
             }
             catch (OperationCanceledException)
@@ -168,7 +175,6 @@ public class Worker : BackgroundService
                 lastConnectionSucceeded = false;
                 logger.LogError(ex, "服务循环发生异常。");
 
-                //nextRetryTime = DateTime.Now.AddSeconds(5);
                 ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
             }
         }
@@ -185,15 +191,25 @@ public class Worker : BackgroundService
         {
             ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
             logger.LogInformation("连接失败。当前已达最大连接重试限制次数：{Count}。", connectRetryCount);
+            PollInterval = TimeSpan.MaxValue;
             connectRetryCount = -1;
         }
         else
         {
             connectRetryCount++;
-            logger.LogInformation("连接失败。当前连接重试次数为：{Count}。", connectRetryCount);
+            SetRetryPollInterval();
+            logger.LogInformation("连接失败。当前连接重试次数为：{Count}。将在 {Seconds} 秒后重试。", connectRetryCount, PollInterval.TotalSeconds);
         }
 
         ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
+    }
+
+    private void SetRetryPollInterval()
+    {
+        if (connectRetryCount == 0)
+            PollInterval = TimeSpan.FromSeconds(3);
+        else if (connectRetryCount >= 1)
+            PollInterval = PollInterval.Add(TimeSpan.FromSeconds(3));
     }
 
     public async Task<IpcResponse> ConnectRequest(CancellationToken ct = default)
@@ -258,7 +274,6 @@ public class Worker : BackgroundService
                 serviceState.TriggerReload();
             }
 
-
             autoConnect = newPolicy;
         }
     }
@@ -270,6 +285,7 @@ public class Worker : BackgroundService
         {
             rasCredentials = newCredentials;
         }
+
         serviceState.TriggerReload();
     }
 
@@ -277,6 +293,7 @@ public class Worker : BackgroundService
     {
         try
         {
+            logger.LogDebug("正在更新网络状态");
             var status = await coreManager.GetNetworkStatusAsync();
             lock (lockObject)
             {
@@ -297,7 +314,7 @@ public class Worker : BackgroundService
     {
         lock (lockObject)
         {
-            var now = DateTime.Now;
+            var now = timeProvider.GetLocalNow().DateTime;
             var timeDrift = now - lastCheckTime;
             lastCheckTime = now;
 
