@@ -6,7 +6,7 @@ using System.Text;
 
 namespace NetSeal.Core.Services.AppSetting;
 
-public class UiSettings([FromKeyedServices("local")] ISettingsStore settingsStore) : IUiSettings
+public class UiSettings([FromKeyedServices("client")] ISettingsStore settingsStore) : IUiSettings
 {
     private readonly ISettingsStore settingsStore = settingsStore;
 

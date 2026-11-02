@@ -80,11 +80,11 @@ public partial class App : Application
         services.AddTransient<CredentialsEnterViewModel>();
         services.AddSingleton<SettingsPageModel>();
         services.AddSingleton<INetworkSettings, NetworkSettings>();
-        services.AddKeyedSingleton<ISettingsStore, RemoteSettingsStore>("remote");
+        services.AddKeyedSingleton<ISettingsStore, RemoteSettingsStore>("service");
 
         var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var systemPath = System.IO.Path.Combine(userFolder, "NetSeal", "network_settings.json");
-        services.AddKeyedSingleton<ISettingsStore>("local", new LocalSettingsStore(systemPath));
+        services.AddKeyedSingleton<ISettingsStore>("client", new LocalSettingsStore(systemPath));
 
         services.AddSingleton<ICoreManager, CoreManager>();
         services.AddSingleton<PipeClient>();

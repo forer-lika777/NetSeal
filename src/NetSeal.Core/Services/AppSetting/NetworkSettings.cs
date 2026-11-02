@@ -14,7 +14,7 @@ using System.Text.Json.Serialization;
 
 namespace NetSeal.Core.Services.AppSetting;
 
-public class NetworkSettings([FromKeyedServices("remote")] ISettingsStore settingsStore) : INetworkSettings
+public class NetworkSettings([FromKeyedServices("service")] ISettingsStore settingsStore) : INetworkSettings
 {
     private readonly ISettingsStore settingsStore = settingsStore;
 

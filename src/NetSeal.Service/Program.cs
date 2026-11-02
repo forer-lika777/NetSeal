@@ -23,7 +23,7 @@ builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
 var systemFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
 var systemPath = Path.Combine(systemFolder, "NetSeal", "network_settings.json");
 var localStore = new LocalSettingsStore(systemPath);
-builder.Services.AddKeyedSingleton<ISettingsStore>("remote", localStore);
+builder.Services.AddKeyedSingleton<ISettingsStore>("service", localStore);
 builder.Services.AddSingleton<ISettingsStore>(localStore);
 
 builder.Services.AddSingleton<INetworkService, NetworkService>();
