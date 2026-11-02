@@ -13,6 +13,11 @@ public partial class NetworkItem : ObservableObject
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; } = false;
+
+    public override string ToString()
+    {
+        return Name + " " + Id;
+    }
 }
 
 [JsonSerializable(typeof(NetworkItem))]

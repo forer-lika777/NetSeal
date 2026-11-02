@@ -274,6 +274,11 @@ public class PipeServer : BackgroundService
             logger.LogInformation("RAS 凭证已更新，通知 Worker");
             await worker.UpdateRasCredentrialsAsync();
         }
+        else if (request.Name == appSettings.SelectedNetwork.Name)
+        {
+            logger.LogInformation("已选网络已更新，通知 Worker");
+            await worker.UpdateSelectedNetworkAsync();
+        }
 
         return JsonSerializer.Serialize(new IpcResponse { Success = true }, JsonOptions);
     }

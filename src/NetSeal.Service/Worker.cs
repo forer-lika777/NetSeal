@@ -38,6 +38,7 @@ public class Worker : BackgroundService
 
     private AutoConnectPolicy autoConnect = new();
     private RasCredentials? rasCredentials = null;
+    private NetworkItem? selectedNetwork = null;
 
     private bool serviceJustStarted = true;
     private int connectRetryCount = -1;
@@ -47,6 +48,7 @@ public class Worker : BackgroundService
     //private int backoffSeconds = 0;
 
     // 网络状态（受线程同步保护）
+    private List<NetworkItem> networks = [];
     private bool isEthernetConnected = false;
     private bool isPppoeNetworkConnected = false;
     private bool isNotPppoeNetworkConnection = false;
@@ -107,6 +109,7 @@ public class Worker : BackgroundService
         logger.LogInformation("正在加载相关配置...");
         autoConnect = await settings.AutoConnectPolicy.GetValueAsync().ConfigureAwait(false);
         rasCredentials = await settings.RasCredentials.GetValueAsync().ConfigureAwait(false);
+        selectedNetwork = await settings.SelectedNetwork.GetValueAsync().ConfigureAwait(false);
 
         EnsurePhonebookExists(phoneBookPath);
         await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "").ConfigureAwait(false);
@@ -119,6 +122,7 @@ public class Worker : BackgroundService
                 if (await serviceState.WaitForReloadAsync(PollInterval, stoppingToken).ConfigureAwait(false))
                 {
                     logger.LogDebug("由于触发器提前终止，轮询未完成等待;");
+                    connectRetryCount = -1;
                 }
             }
 
@@ -253,11 +257,6 @@ public class Worker : BackgroundService
         return new IpcResponse { Success = true };
     }
 
-    public IpcResponse? GetConnectStatus()
-    {
-        return lastConnectResult;
-    }
-
     public async Task UpdateAutoConnectPolicyAsync()
     {
         var newPolicy = await settings.AutoConnectPolicy.GetValueAsync();
@@ -289,6 +288,17 @@ public class Worker : BackgroundService
         serviceState.TriggerReload();
     }
 
+    public async Task UpdateSelectedNetworkAsync()
+    {
+        var network = await settings.SelectedNetwork.GetValueAsync();
+        lock (lockObject)
+        {
+            selectedNetwork = network;
+        }
+
+        serviceState.TriggerReload();
+    }
+
     private async Task UpdateNetworkStatusAsync()
     {
         try
@@ -302,6 +312,7 @@ public class Worker : BackgroundService
                 isNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
                 isPppoeNetworkManagedByOutside = status.IsPppoeConnectionManagedByOutside;
                 isNetworkConnectionManagedByOutside = status.IsNetworkConnectionManagedByOutside;
+                networks = status.ActiveEthernetNetworks;
             }
         }
         catch (Exception ex)
@@ -380,6 +391,12 @@ public class Worker : BackgroundService
         if (isPppoeNetworkManagedByOutside)
         {
             logger.LogInformation("当前 PPPoE 网络由外部管理。");
+            return false;
+        }
+
+        if (selectedNetwork is not null && !networks.Any(n => n.Id == selectedNetwork.Id))
+        {
+            logger.LogInformation($"当前未连接到匹配网络：{selectedNetwork.ToString()}。");
             return false;
         }
 
