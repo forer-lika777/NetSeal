@@ -89,7 +89,7 @@ internal sealed partial class RasHandle : SafeHandleZeroOrMinusOneIsInvalid, IEq
     /// </summary>
     /// <param name="obj">The <see cref="System.Object"/> to compare with the current <see cref="System.Object"/>.</param>
     /// <returns><b>true</b> if <paramref name="obj"/> is equal to the current object, otherwise <b>false</b>.</returns>
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         RasHandle? handle = obj as RasHandle;
 
@@ -106,7 +106,7 @@ internal sealed partial class RasHandle : SafeHandleZeroOrMinusOneIsInvalid, IEq
     /// </summary>
     /// <param name="other">The <see cref="DotRas.RasHandle"/> to compare with the current <see cref="DotRas.RasHandle"/>.</param>
     /// <returns><b>true</b> if <paramref name="other"/> is equal to the current object, otherwise <b>false</b>.</returns>
-    public bool Equals(RasHandle other)
+    public bool Equals(RasHandle? other)
     {
         if (object.ReferenceEquals(other, null))
         {

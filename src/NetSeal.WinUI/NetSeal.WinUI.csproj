@@ -16,6 +16,8 @@
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <EnableMsixTooling>false</EnableMsixTooling>
     <Nullable>enable</Nullable>
+
+	<NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Assets\icon.ico" />

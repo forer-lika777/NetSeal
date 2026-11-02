@@ -63,7 +63,6 @@ internal interface IEnumNetworks
     void GetIDsOfNames();
     void Invoke();
 
-    [return: MarshalAs(UnmanagedType.Interface)]
     object NewEnum { get; }
 
     [PreserveSig]
@@ -106,7 +105,6 @@ internal interface IEnumNetworkConnections
     void GetIDsOfNames();
     void Invoke();
 
-    [return: MarshalAs(UnmanagedType.Interface)]
     object NewEnum { get; }
 
     [PreserveSig]
