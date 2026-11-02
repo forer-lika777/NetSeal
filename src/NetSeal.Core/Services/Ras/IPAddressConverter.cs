@@ -43,7 +43,7 @@ internal class IPAddressConverter : TypeConverter
     /// <param name="context">An <see cref="ITypeDescriptorContext"/> that provides a format context.</param>
     /// <param name="sourceType">The source type.</param>
     /// <returns><b>true</b> if the conversion can be performed, otherwise <b>false</b>.</returns>
-    public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
     {
         if (sourceType == typeof(NativeMethods.RASIPADDR) || sourceType == typeof(string))
         {
@@ -67,7 +67,7 @@ internal class IPAddressConverter : TypeConverter
     /// <param name="context">An <see cref="ITypeDescriptorContext"/> that provides a format context.</param>
     /// <param name="destinationType">The destination type.</param>
     /// <returns><b>true</b> if the conversion can be performed, otherwise <b>false</b>.</returns>
-    public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+    public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
     {
         if (destinationType == typeof(NativeMethods.RASIPADDR))
         {
@@ -88,7 +88,7 @@ internal class IPAddressConverter : TypeConverter
     /// <param name="culture">A <see cref="System.Globalization.CultureInfo"/>. If null is passed, the current culture is presumed.</param>
     /// <param name="value">The value to convert.</param>
     /// <returns>The converted object.</returns>
-    public override object ConvertFrom(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value)
+    public override object? ConvertFrom(ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object value)
     {
         if (value is string)
         {
@@ -134,15 +134,15 @@ internal class IPAddressConverter : TypeConverter
     /// <param name="value">The value to convert.</param>
     /// <param name="destinationType">The destination type.</param>
     /// <returns>The converted object.</returns>
-    public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType)
+    public override object? ConvertTo(ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, Type destinationType)
     {
-        IPAddress addr = (IPAddress)value;
+        IPAddress? addr = (IPAddress?)value;
 
         if (destinationType == typeof(NativeMethods.RASIPADDR) && (addr == null || (addr != null && addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)))
         {
             NativeMethods.RASIPADDR ipv4 = new NativeMethods.RASIPADDR();
 
-            if (value == null)
+            if (addr == null)
             {
                 ipv4.addr = IPAddress.Any.GetAddressBytes();
             }
