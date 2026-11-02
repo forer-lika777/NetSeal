@@ -11,10 +11,6 @@
 //      You must not remove this notice, or any other, from this software.
 // </copyright>
 //--------------------------------------------------------------------------
-using System;
-using System.Globalization;
-using System.Runtime.InteropServices;
-
 namespace NetSeal.Core.Services.Ras;
 
 internal static class Ras

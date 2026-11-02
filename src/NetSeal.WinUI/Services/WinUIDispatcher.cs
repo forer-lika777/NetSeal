@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Microsoft.UI.Dispatching;
+using System;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
 
 namespace NetSeal.WinUI.Services;
 

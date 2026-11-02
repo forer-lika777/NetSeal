@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NetSeal.Service;
+﻿namespace NetSeal.Service;
 
 public class ServiceState
 {

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+﻿using System.Diagnostics;
 using System.Text.Json;
 
 namespace NetSeal.Core.Services.AppSetting;
@@ -32,8 +29,8 @@ public class LocalSettingsStore : ISettingsStore
 
             // 读取整个 JSON 文件
             try
-            { 
-                json = await File.ReadAllTextAsync(filePath, ct); 
+            {
+                json = await File.ReadAllTextAsync(filePath, ct);
             }
             catch (FileNotFoundException)
             {
@@ -41,7 +38,8 @@ public class LocalSettingsStore : ISettingsStore
             }
             catch (JsonException ex)
             {
-                Debug.WriteLine($"设置文件损坏: {ex.Message}"); return null;
+                Debug.WriteLine($"设置文件损坏: {ex.Message}");
+                return null;
             }
 
             // 解析成字典

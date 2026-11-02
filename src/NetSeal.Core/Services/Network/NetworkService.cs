@@ -1,12 +1,6 @@
 ﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services.Ras;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NetSeal.Core.Services.Network;
 
@@ -60,7 +54,7 @@ public class NetworkService : INetworkService
         });
     }
 
-    public async Task<List<string>> GetActiveNetworkAdapterNamesAsync() 
+    public async Task<List<string>> GetActiveNetworkAdapterNamesAsync()
     {
         var adapters = await GetActiveNetworkAdaptersAsync();
         return adapters.Select(a => a.Name).ToList();

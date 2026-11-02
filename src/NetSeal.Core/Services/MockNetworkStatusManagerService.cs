@@ -1,6 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
-using NetSeal.Core.Models;
-using NetSeal.Core.Services.Network;
+﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services.Ras;
 
 namespace NetSeal.Core.Services;
@@ -62,7 +60,7 @@ public class MockNetworkStatusManagerService : ICoreManager, IRasDialer
 
     private async Task<NetworkConnectivityLevel> GetConnectivityLevelAsync()
     {
-        
+
         return ConnectivityLevel;
     }
 

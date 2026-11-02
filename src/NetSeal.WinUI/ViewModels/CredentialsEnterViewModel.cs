@@ -1,13 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
-using Windows.Devices.Bluetooth.Advertisement;
 
 namespace NetSeal.WinUI.ViewModels;
 

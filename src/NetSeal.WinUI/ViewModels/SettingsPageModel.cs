@@ -3,10 +3,7 @@ using Microsoft.UI.Xaml;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.WinUI.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace NetSeal.WinUI.ViewModels;

@@ -2,21 +2,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using NetSeal.Core.Models;
 using NetSeal.WinUI.Controls;
 using NetSeal.WinUI.ViewModels;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 
 namespace NetSeal.WinUI.Pages;
 
@@ -101,7 +92,7 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
             Title = "更改网络凭据",
             Content = credentialsEnterView,
         };
-        
+
         dialog.PrimaryButtonClick += async (s, e) =>
         {
             var deferral = e.GetDeferral();

@@ -1,17 +1,10 @@
 ﻿using NetSeal.Core.Models;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
-using System.Threading;
-using System.Threading.Tasks;
 using static NetSeal.Core.Services.Ras.NativeMethods;
 
 namespace NetSeal.Core.Services.Ras;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:使用 “LibraryImportAttribute” 而不是 “DllImportAttribute” 在编译时生成 P/Invoke 封送代码", Justification = "<挂起>")]
 public class RasDialer : IRasDialer
 {
     #region P/Invoke
@@ -48,7 +41,7 @@ public class RasDialer : IRasDialer
     /// </returns>
     [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasValidateEntryName(
-        string? lpszPhonebook, 
+        string? lpszPhonebook,
         string lpszEntry);
 
     /// <summary>
@@ -123,7 +116,7 @@ public class RasDialer : IRasDialer
         string? lpszPhonebook,
         string lpszEntry,
         in RASENTRY lpRasEntry,
-        uint dwEntryInfoSize, 
+        uint dwEntryInfoSize,
         [In] byte[]? lpbDeviceInfo,
         uint dwDeviceInfoSize);
 
@@ -185,11 +178,11 @@ public class RasDialer : IRasDialer
     /// </returns>
     [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasGetEntryProperties(
-        string? lpszPhonebook, 
-        string lpszEntry, 
-        ref RASENTRY? lpRasEntry, 
-        ref uint? lpdwEntryInfoSize, 
-        [Out] byte[]? lpbDeviceInfo, 
+        string? lpszPhonebook,
+        string lpszEntry,
+        ref RASENTRY? lpRasEntry,
+        ref uint? lpdwEntryInfoSize,
+        [Out] byte[]? lpbDeviceInfo,
         ref uint? lpdwDeviceInfoSize);
 
     /// <summary>
@@ -219,7 +212,7 @@ public class RasDialer : IRasDialer
     /// </returns>
     [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasDeleteEntry(
-        string? lpszPhonebook, 
+        string? lpszPhonebook,
         string lpszEntry);
 
     /// <summary>
@@ -268,8 +261,8 @@ public class RasDialer : IRasDialer
     /// </returns>
     [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasSetCredentials(
-        string? lpszPhonebook, 
-        string lpszEntry, 
+        string? lpszPhonebook,
+        string lpszEntry,
         in RASCREDENTIALS lpCredentials,
         [MarshalAs(UnmanagedType.Bool)] bool fClearCredentials);
 
@@ -323,8 +316,8 @@ public class RasDialer : IRasDialer
     /// </returns>
     [DllImport("rasapi32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RasEnumEntries(
-        string? reserved, 
-        string? lpszPhonebook, 
+        string? reserved,
+        string? lpszPhonebook,
         [In, Out] RASENTRYNAME[]? lprasentryname,
         ref uint lpcb,
         out uint lpcEntries);
@@ -620,7 +613,7 @@ public class RasDialer : IRasDialer
             password = password,
             domain = "",
         };
-        
+
         uint ret = RasDial(IntPtr.Zero, phoneBook, in p, 0, IntPtr.Zero, out var conn);
         handle = conn;
         if (ret != ERROR_SUCCESS)
@@ -647,7 +640,7 @@ public class RasDialer : IRasDialer
     private static void Disconnect(string? entryName = null)
     {
         var connection = GetActivePppoeConnection() ?? throw new InvalidOperationException("当前没有活跃的连接项目。");
-        
+
         if (entryName != null)
             ArgumentOutOfRangeException.ThrowIfNotEqual(entryName, connection.entryName);
 
@@ -788,9 +781,9 @@ public class RasDialer : IRasDialer
         {
             size = Marshal.SizeOf<RASENTRY>(),
             entryType = RasEntryType.Broadband,
-            options = RASEO.RemoteDefaultGateway 
-                | RASEO.ShowDialingProgress 
-                | RASEO.PreviewUserPassword 
+            options = RASEO.RemoteDefaultGateway
+                | RASEO.ShowDialingProgress
+                | RASEO.PreviewUserPassword
                 | RASEO.PreviewDomain
                 | RASEO.RequirePap
                 | RASEO.RequireChap,
@@ -918,7 +911,7 @@ public class RasDialer : IRasDialer
         if (connection is not RASCONN conn)
             return null;
 
-        return new RasConnection 
+        return new RasConnection
         {
             PhoneBookName = conn.phoneBook,
             EntryName = conn.entryName,
@@ -942,7 +935,7 @@ public class RasDialer : IRasDialer
 
     public async Task<bool> GetIsConnectionManagedByCurrentSessionAsync()
     {
-        var connection = await GetActiveRasConnectionAsync() 
+        var connection = await GetActiveRasConnectionAsync()
             ?? throw new InvalidOperationException("当前不存在活跃状态的 Ras 连接项目。");
 
         return currentConnectionHandle == connection.Handle;

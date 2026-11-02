@@ -1,7 +1,5 @@
 ﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
-using NetSeal.Core.Services.Pipe;
-using NetSeal.Core.Services.Ras;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Security.AccessControl;
@@ -27,9 +25,9 @@ public class PipeServer : BackgroundService
     };
 
     public PipeServer(
-        ILogger<PipeServer> logger, 
-        INetworkSettings appSettings, 
-        ISettingsStore settingsStore, 
+        ILogger<PipeServer> logger,
+        INetworkSettings appSettings,
+        ISettingsStore settingsStore,
         ServiceState serviceState,
         Worker worker)
     {

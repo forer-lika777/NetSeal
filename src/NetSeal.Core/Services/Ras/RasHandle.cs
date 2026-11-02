@@ -14,8 +14,8 @@
 
 namespace NetSeal.Core.Services.Ras;
 
-using System;
 using Microsoft.Win32.SafeHandles;
+using System;
 
 /// <summary>
 /// Represents a wrapper class for remote access service (RAS) handles. This class cannot be inherited.

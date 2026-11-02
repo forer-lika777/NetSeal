@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using NetSeal.Core.Models;
 using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading.Tasks;
-using NetSeal.Core.Models;
 
 namespace NetSeal.Core.Services.Network;
 

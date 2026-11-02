@@ -4,30 +4,16 @@ using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
-using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Pipe;
-using NetSeal.Core.Services.Ras;
 using NetSeal.WinUI.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Formats.Tar;
-using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Windows.Devices.PointOfService;
-using Windows.Media.DialProtocol;
-using Windows.System;
 
 namespace NetSeal.WinUI.ViewModels;
 
@@ -48,9 +34,9 @@ public partial class StatusPageModel : ObservableObject
     private bool settingsLoadSuccess = false;
 
     public StatusPageModel(
-        INetworkSettings appSettings, 
-        IUiDispatcher dispatcher, 
-        ICoreManager coreManager, 
+        INetworkSettings appSettings,
+        IUiDispatcher dispatcher,
+        ICoreManager coreManager,
         PipeClient pipeClient)
     {
         this.settings = appSettings;
@@ -77,11 +63,11 @@ public partial class StatusPageModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(
-        nameof(ConnectCommand), 
+        nameof(ConnectCommand),
         nameof(DisconnectCommand))]
     [NotifyPropertyChangedFor(
-        nameof(CanModifySelectedNetworkIndex), 
-        nameof(CanModifyCredentials), 
+        nameof(CanModifySelectedNetworkIndex),
+        nameof(CanModifyCredentials),
         nameof(CanModifyAutoConnectOnStartup),
         nameof(CanModifyReconnectOnWake),
         nameof(CanModifyReconnectOnDisconnect))]
@@ -142,7 +128,7 @@ public partial class StatusPageModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(
-        nameof(ConnectCommand), 
+        nameof(ConnectCommand),
         nameof(DisconnectCommand))]
     public partial bool IsPppoeNetworkConnected { get; set; } = false;
 
@@ -226,7 +212,7 @@ public partial class StatusPageModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(
-        nameof(ConnectCommand), 
+        nameof(ConnectCommand),
         nameof(DisconnectCommand))]
     public partial bool IsConnecting { get; set; } = false;
 
@@ -255,7 +241,7 @@ public partial class StatusPageModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
-    public partial bool IsSavingAutoConnectOnStartup { get; set; } = false; 
+    public partial bool IsSavingAutoConnectOnStartup { get; set; } = false;
 
     async partial void OnAutoConnectOnStartupChanged(bool oldValue, bool newValue)
     {

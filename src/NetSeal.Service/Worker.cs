@@ -1,7 +1,6 @@
 ﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
-using NetSeal.Core.Services.Pipe;
 using NetSeal.Core.Services.Ras;
 using System.ComponentModel;
 
@@ -79,9 +78,9 @@ public class Worker : BackgroundService
     private TaskCompletionSource<IpcResponse>? ConnectInvokedTcs = null;
     //private SemaphoreSlim ConnectInvokeLocker = new SemaphoreSlim(1, 1);
 
-    public Worker(ILogger<Worker> logger, 
-        IRasDialer rasDialer, 
-        INetworkSettings settings, 
+    public Worker(ILogger<Worker> logger,
+        IRasDialer rasDialer,
+        INetworkSettings settings,
         ICoreManager coreManager,
         ServiceState serviceState)
     {
@@ -146,9 +145,9 @@ public class Worker : BackgroundService
                 //ConnectInvokeLocker.Wait();
                 ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = true });
             }
-            catch (OperationCanceledException) 
-            { 
-                break; 
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Win32Exception ex)
             {
@@ -168,7 +167,7 @@ public class Worker : BackgroundService
             {
                 lastConnectionSucceeded = false;
                 logger.LogError(ex, "服务循环发生异常。");
-                
+
                 //nextRetryTime = DateTime.Now.AddSeconds(5);
                 ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
             }

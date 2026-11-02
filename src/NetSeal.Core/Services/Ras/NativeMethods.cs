@@ -12,9 +12,7 @@
 // </copyright>
 //--------------------------------------------------------------------------
 
-using System;
 using System.ComponentModel;
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using FILETIME = System.Runtime.InteropServices.ComTypes.FILETIME;
 
@@ -265,7 +263,7 @@ internal static class NativeMethods
     /// Defines the maximum length of a username for the credential user interface.
     /// </summary>
     public const int CREDUI_MAX_USERNAME_LENGTH = 256 + 1 + 256;
-    
+
     /// <summary>
     /// Defines the maximum length of a username for the credential user interface.
     /// </summary>

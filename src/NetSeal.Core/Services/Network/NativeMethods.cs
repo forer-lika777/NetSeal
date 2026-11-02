@@ -1,10 +1,6 @@
 ﻿// See https://github.com/mirror/mingw-w64/blob/master/mingw-w64-headers/include/netlistmgr.h
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace NetSeal.Core.Services.Network;
 

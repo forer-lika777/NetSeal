@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Runtime.InteropServices;
 
 namespace NetSeal.Core.Services.Ras;
 
@@ -22,7 +19,7 @@ internal struct Luid
 
     public override readonly bool Equals(object? obj) => obj is Luid l && Equals(l);
 
-    public override readonly int GetHashCode()=> HashCode.Combine(LowPart, HighPart);
+    public override readonly int GetHashCode() => HashCode.Combine(LowPart, HighPart);
 
     public static bool operator ==(Luid left, Luid right)
     {

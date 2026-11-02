@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Hosting.WindowsServices;
-using NetSeal.Core.Services;
+﻿using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;

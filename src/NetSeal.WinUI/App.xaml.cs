@@ -1,18 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
-using H.NotifyIcon.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
@@ -22,17 +14,7 @@ using NetSeal.WinUI.Pages;
 using NetSeal.WinUI.Services;
 using NetSeal.WinUI.ViewModels;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.SymbolStore;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 
 namespace NetSeal.WinUI;
 
@@ -113,7 +95,7 @@ public partial class App : Application
 #endif
 
         services.AddSingleton<IUiDispatcher>(sp => new WinUIDispatcher(DispatcherQueue.GetForCurrentThread()));
-        
+
         return services.BuildServiceProvider();
     }
 

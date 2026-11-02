@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NetSeal.Core.Models;
+﻿namespace NetSeal.Core.Models;
 
 public class NetworkConnection
 {
