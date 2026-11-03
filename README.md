@@ -3,6 +3,8 @@
 
 Reimu's NetSeal 是 forer4433 在广东工业大学自动网络拨号连接的 Windows 桌面应用。
 
+Reimu's NetSeal 是一个实验性项目，目前仍处于开发阶段。
+
 Reimu's NetSeal 的核心功能
 ---
 
@@ -12,17 +14,16 @@ Reimu's NetSeal 的核心功能
 
 Reimu's NetSeal 的技术栈
 ---
-* WinUI 3：基于 Fluent UI 的现代化 windows 桌面应用框架。
+
+* WinUI 3：基于 Fluent UI 的现代化 Windows 前端桌面应用框架。
+* Windows 服务：开机自启动、连接持久化等功能。
 * 底层 Windows API / COM 互操作：实现网络识别、拨号连接功能。
-* Windows 服务：开机自启动连接、连接持久化功能。
 * C#：项目的所有部分使用 C# 编写。
 
 平台可用性
 ---
 
-应用只能在 Windows 10 （1809 以后）或更高版本的 Windows 系统中运行，因其大部分技术栈仅在 Windows 中可用。
-
-不会考虑跨平台设计。
+应用仅在 Windows 10 （1809 及以后）或更高版本的 Windows 系统中运行。
 
 另请参阅
 ---
