@@ -31,8 +31,6 @@ public partial class StatusPageModel : ObservableObject
     private CancellationTokenSource? connectCts = null;
     private bool initialized = false;
 
-    private bool settingsLoadSuccess = false;
-
     public StatusPageModel(
         INetworkSettings appSettings,
         IUiDispatcher dispatcher,
@@ -77,7 +75,6 @@ public partial class StatusPageModel : ObservableObject
     {
         if (value)
         {
-            if (!settingsLoadSuccess)
                 await UpdateNetworkSettingsAsync();
         }
     }
@@ -392,8 +389,6 @@ public partial class StatusPageModel : ObservableObject
             AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
             ReconnectOnWake = autoConnect.ReconnectOnWake;
             ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
-
-            settingsLoadSuccess = true;
         }
         catch (Exception ex)
         {
