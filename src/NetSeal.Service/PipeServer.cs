@@ -48,18 +48,15 @@ public class PipeServer : BackgroundService
             PipeAccessRights.FullControl, AccessControlType.Allow));
 
         RestartAsAdmin();
-        // 如果你是 LocalSystem 服务，通常不需要 RestartAsAdmin
-        // 如果你需要，请确保它在循环外执行一次
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                // 注意：这里最好把实例数设大，或者用 -1（无限）
                 using var serverStream = NamedPipeServerStreamAcl.Create(
                     IpcPipeName.NetSealServiceIpcPipeName,
                     PipeDirection.InOut,
-                    10, // 改大一点，或者 -1
+                    10,
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous,
                     4096,
@@ -70,7 +67,6 @@ public class PipeServer : BackgroundService
                 await serverStream.WaitForConnectionAsync(stoppingToken);
                 logger.LogDebug("服务已接收到客户端连接");
 
-                // 处理当前连接的请求
                 await HandleClientAsync(serverStream, stoppingToken);
             }
             catch (OperationCanceledException)
@@ -85,7 +81,6 @@ public class PipeServer : BackgroundService
         }
     }
 
-    // 把处理逻辑抽出来，保持代码清晰
     private async Task HandleClientAsync(NamedPipeServerStream serverStream, CancellationToken stoppingToken)
     {
         try
@@ -94,7 +89,7 @@ public class PipeServer : BackgroundService
             {
                 byte[] lengthBuffer = new byte[4];
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(30)); // 客户端 10 秒一次心跳，30 秒没收到就说明死了
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
 
                 int bytesRead;
 
@@ -102,12 +97,15 @@ public class PipeServer : BackgroundService
                 {
                     bytesRead = await serverStream.ReadAsync(lengthBuffer, 0, 4, cts.Token);
                     if (bytesRead == 0)
-                        break; // 客户端断开
+                    {
+                        logger.LogDebug("客户端连接已断开");
+                        break;
+                    }
                 }
                 catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
                 {
                     logger.LogWarning("客户端心跳超时，强制断开");
-                    break; // 强行跳出循环，释放实例
+                    break;
                 }
 
                 int messageLength = BitConverter.ToInt32(lengthBuffer, 0);
@@ -117,7 +115,7 @@ public class PipeServer : BackgroundService
                 byte[] messageBuffer = new byte[messageLength];
                 bytesRead = await ReadExactAsync(serverStream, messageBuffer, messageLength, stoppingToken);
                 if (bytesRead < messageLength)
-                    break; // 读不全，断开
+                    break;
 
                 string requestLine = Encoding.UTF8.GetString(messageBuffer);
                 string responseLine = await HandleRequestAsync(requestLine, stoppingToken).ConfigureAwait(false);
@@ -132,7 +130,7 @@ public class PipeServer : BackgroundService
         }
         catch (IOException)
         {
-            logger.LogDebug("客户端异常断开");
+            logger.LogWarning("客户端异常断开");
         }
     }
 
@@ -174,15 +172,13 @@ public class PipeServer : BackgroundService
         try
         {
             Process.Start(processInfo);
+            Environment.Exit(0);
         }
         catch (System.ComponentModel.Win32Exception)
         {
             // 用户点击了 UAC 的“否”
-            logger.LogError("未获取到权限。");
+            logger.LogWarning("未获取到权限（以非管理员模式运行程序会导致某些操作无法执行）。");
         }
-
-        // 退出当前的非管理员实例
-        Environment.Exit(0);
     }
 
     private async Task<string> HandleRequestAsync(string requestLine, CancellationToken ct)
@@ -209,6 +205,7 @@ public class PipeServer : BackgroundService
             switch (request.Cmd)
             {
                 case IpcCommands.CheckServiceStatus:
+                    logger.LogDebug("已接收到客户端心跳请求。");
                     return IpcResponse.SerializeOk();
 
                 case IpcCommands.GetAppSettingsKeyValue:

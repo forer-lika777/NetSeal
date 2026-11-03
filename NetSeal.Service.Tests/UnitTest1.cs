@@ -65,23 +65,19 @@ public class WorkerTests
         var mockCoreManager = new Mock<ICoreManager>();
         var serviceState = new ServiceState();
 
-        mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
-        mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
-            .Callback(() => isConnect = true)
-            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
+        var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
 
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
-            .ReturnsAsync(new NetworkStatus
-            {
-                IsPppoeNetworkConnected = isPppoeNetworkConnected || isConnect,
-                IsEthernetConnected = isEthernetConnected,
-                IsNotPppoeNetworkConnection = isNetworkConnectionManagedByOutside,
-                IsInternetAccess = isPppoeNetworkConnected || isNetworkConnectionManagedByOutside,
-                IsNetworkConnectionManagedByOutside = isNetworkConnectionManagedByOutside,
-                IsPppoeConnectionManagedByOutside = isNetworkConnectionManagedByOutside,
-                NetworkConnectivityLevel = NetworkConnectivityLevel.InternetAccess,
-            });
+        var status = new NetworkStatus
+        {
+            IsPppoeNetworkConnected = isPppoeNetworkConnected || isConnect,
+            IsEthernetConnected = isEthernetConnected,
+            IsNotPppoeNetworkConnection = isNetworkConnectionManagedByOutside,
+            IsInternetAccess = isPppoeNetworkConnected || isNetworkConnectionManagedByOutside,
+            IsNetworkConnectionManagedByOutside = isNetworkConnectionManagedByOutside,
+            IsPppoeConnectionManagedByOutside = isNetworkConnectionManagedByOutside,
+            NetworkConnectivityLevel = NetworkConnectivityLevel.InternetAccess,
+            ActiveEthernetNetworks = [network],
+        };
 
         var worker = new Worker(
             logger,
@@ -91,6 +87,23 @@ public class WorkerTests
             serviceState,
             fakeTime
         );
+
+        mockRasDialer.Setup(r => r.RasConnectAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback(async () =>
+            {
+                status.IsPppoeNetworkConnected = true;
+                await worker.UpdateNetworkStatusAsync();
+            });
+
+        mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
+        mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
+        mockSettings.Setup(s => s.SelectedNetwork.GetValueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(network);
+
+        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
+            .ReturnsAsync(status);
 
         var cts = new CancellationTokenSource();
         Task task = worker.StartAsync(cts.Token);
@@ -111,10 +124,10 @@ public class WorkerTests
 
         if (!serviceJustStarted)
         {
-            //serviceState.TriggerReload();
+            serviceState.TriggerReload();
         }
 
-        await Task.Delay(200);
+        await Task.Delay(1000);
 
         mockRasDialer.Verify(r => r.RasConnectAsync(
             It.IsAny<string>(),
@@ -127,9 +140,15 @@ public class WorkerTests
         await worker.StopAsync(cts.Token);
     }
 
-    [Fact]
-    public async Task Worker_Should_Connect_At_Startup()
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    public async Task Modify_Settings_Tests(bool hasCredentials, bool hasMatchedNetwork, bool result)
     {
+        bool isConnect = false;
+
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddXUnit(outputHelper);
@@ -145,10 +164,15 @@ public class WorkerTests
         var mockCoreManager = new Mock<ICoreManager>();
         var serviceState = new ServiceState();
 
+        var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
+
         mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
         mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
+            .Callback(() => isConnect = true)
+            .ReturnsAsync(new RasCredentials { Username = hasCredentials ? "123" : "", Password = hasCredentials ? "shazi" : "" });
+        mockSettings.Setup(s => s.SelectedNetwork.GetValueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(network);
 
         mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
             .ReturnsAsync(new NetworkStatus
@@ -160,209 +184,7 @@ public class WorkerTests
                 IsNetworkConnectionManagedByOutside = false,
                 IsPppoeConnectionManagedByOutside = false,
                 NetworkConnectivityLevel = NetworkConnectivityLevel.ConstrainedInternetAccess,
-            });
-
-        var worker = new Worker(
-            logger,
-            mockRasDialer.Object,
-            mockSettings.Object,
-            mockCoreManager.Object,
-            serviceState,
-            fakeTime
-        );
-
-        var cts = new CancellationTokenSource();
-        Task task = worker.StartAsync(cts.Token);
-
-        await Task.Delay(10);
-
-        await Task.Yield();
-        fakeTime.Advance(TimeSpan.FromSeconds(3.1));
-
-        await Task.Delay(200);
-
-        mockRasDialer.Verify(r => r.RasConnectAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        await worker.StopAsync(cts.Token);
-    }
-
-    [Fact]
-    public async Task Worker_Should_Not_Connect_At_Startup_If_Internet_Access()
-    {
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddXUnit(outputHelper);
-            builder.SetMinimumLevel(LogLevel.Debug);
-        });
-
-        var logger = loggerFactory.CreateLogger<Worker>();
-
-        var fakeTime = new FakeTimeProvider();
-
-        var mockRasDialer = new Mock<IRasDialer>();
-        var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreManager>();
-        var serviceState = new ServiceState();
-
-        mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
-        mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
-
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
-            .ReturnsAsync(new NetworkStatus
-            {
-                IsPppoeNetworkConnected = false,
-                IsEthernetConnected = true,
-                IsNotPppoeNetworkConnection = true,
-                IsInternetAccess = true,
-                IsNetworkConnectionManagedByOutside = true,
-                IsPppoeConnectionManagedByOutside = false,
-                NetworkConnectivityLevel = NetworkConnectivityLevel.InternetAccess,
-            });
-
-        var worker = new Worker(
-            logger,
-            mockRasDialer.Object,
-            mockSettings.Object,
-            mockCoreManager.Object,
-            serviceState,
-            fakeTime
-        );
-
-        var cts = new CancellationTokenSource();
-        Task task = worker.StartAsync(cts.Token);
-
-        await Task.Delay(10);
-
-        await Task.Yield();
-        fakeTime.Advance(TimeSpan.FromSeconds(3.1));
-
-        await Task.Delay(200);
-
-        mockRasDialer.Verify(r => r.RasConnectAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        await worker.StopAsync(cts.Token);
-    }
-
-    [Fact]
-    public async Task Worker_Should_Reconnect_After_Sleep()
-    {
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddXUnit(outputHelper);
-            builder.SetMinimumLevel(LogLevel.Debug);
-        });
-
-        var logger = loggerFactory.CreateLogger<Worker>();
-
-        var fakeTime = new FakeTimeProvider();
-
-        var mockRasDialer = new Mock<IRasDialer>();
-        var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreManager>();
-        var serviceState = new ServiceState();
-
-        mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
-        mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
-
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
-            .ReturnsAsync(new NetworkStatus
-            {
-                IsPppoeNetworkConnected = false,
-                IsEthernetConnected = true,
-                IsNotPppoeNetworkConnection = false,
-                IsInternetAccess = false,
-                IsNetworkConnectionManagedByOutside = false,
-                IsPppoeConnectionManagedByOutside = false,
-                NetworkConnectivityLevel = NetworkConnectivityLevel.ConstrainedInternetAccess,
-            });
-
-        var worker = new Worker(
-            logger,
-            mockRasDialer.Object,
-            mockSettings.Object,
-            mockCoreManager.Object,
-            serviceState,
-            fakeTime
-        );
-
-        var cts = new CancellationTokenSource();
-        Task task = worker.StartAsync(cts.Token);
-
-        await Task.Delay(10);
-
-        var justStartedField = typeof(Worker).GetField("serviceJustStarted", BindingFlags.NonPublic | BindingFlags.Instance);
-        justStartedField?.SetValue(worker, false);
-
-        var lastCheckTimeField = typeof(Worker).GetField("lastCheckTime", BindingFlags.NonPublic | BindingFlags.Instance);
-        lastCheckTimeField?.SetValue(worker, fakeTime.GetLocalNow().DateTime.AddSeconds(-61));
-
-        await Task.Yield();
-        fakeTime.Advance(TimeSpan.FromSeconds(3.1));
-
-        serviceState.TriggerReload();
-
-        await Task.Delay(200);
-
-        mockRasDialer.Verify(r => r.RasConnectAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        await worker.StopAsync(cts.Token);
-    }
-
-    [Fact]
-    public async Task Worker_Should_Not_Reconnect_After_Sleep_If_Network_Connected()
-    {
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.AddXUnit(outputHelper);
-            builder.SetMinimumLevel(LogLevel.Debug);
-        });
-
-        var logger = loggerFactory.CreateLogger<Worker>();
-
-        var fakeTime = new FakeTimeProvider();
-
-        var mockRasDialer = new Mock<IRasDialer>();
-        var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreManager>();
-        var serviceState = new ServiceState();
-
-        mockSettings.Setup(s => s.AutoConnectPolicy.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AutoConnectPolicy { ReconnectOnWake = true, AutoConnectOnStartup = true, ReconnectOnDisconnect = true });
-        mockSettings.Setup(s => s.RasCredentials.GetValueAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new RasCredentials { Username = "123", Password = "666" });
-
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
-            .ReturnsAsync(new NetworkStatus
-            {
-                IsPppoeNetworkConnected = true,
-                IsEthernetConnected = true,
-                IsNotPppoeNetworkConnection = false,
-                IsInternetAccess = true,
-                IsNetworkConnectionManagedByOutside = false,
-                IsPppoeConnectionManagedByOutside = false,
-                NetworkConnectivityLevel = NetworkConnectivityLevel.InternetAccess,
+                ActiveEthernetNetworks = hasMatchedNetwork ? [network] : [],
             });
 
         var worker = new Worker(
@@ -385,11 +207,6 @@ public class WorkerTests
         var justStartedField = typeof(Worker).GetField("serviceJustStarted", BindingFlags.NonPublic | BindingFlags.Instance);
         justStartedField?.SetValue(worker, false);
 
-        var lastCheckTimeField = typeof(Worker).GetField("lastCheckTime", BindingFlags.NonPublic | BindingFlags.Instance);
-        lastCheckTimeField?.SetValue(worker, fakeTime.GetLocalNow().DateTime.AddSeconds(-61));
-
-        serviceState.TriggerReload();
-
         await Task.Delay(200);
 
         mockRasDialer.Verify(r => r.RasConnectAsync(
@@ -398,7 +215,7 @@ public class WorkerTests
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()),
-            Times.Never);
+            result ? Times.Once : Times.Never);
 
         await worker.StopAsync(cts.Token);
     }

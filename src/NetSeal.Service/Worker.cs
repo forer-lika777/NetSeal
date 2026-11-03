@@ -104,8 +104,6 @@ public class Worker : BackgroundService
         logger.LogInformation("正在等待其他服务项启动...");
         await Task.Delay(TimeSpan.FromSeconds(3), timeProvider, stoppingToken).ConfigureAwait(false);
 
-        //await UpdateNetworkStatusAsync().ConfigureAwait(false);
-
         logger.LogInformation("正在加载相关配置...");
         autoConnect = await settings.AutoConnectPolicy.GetValueAsync().ConfigureAwait(false);
         rasCredentials = await settings.RasCredentials.GetValueAsync().ConfigureAwait(false);
@@ -299,7 +297,7 @@ public class Worker : BackgroundService
         serviceState.TriggerReload();
     }
 
-    private async Task UpdateNetworkStatusAsync()
+    public async Task UpdateNetworkStatusAsync()
     {
         try
         {
@@ -332,7 +330,7 @@ public class Worker : BackgroundService
             // 已经连接 PPPoE 网络
             if (isPppoeNetworkConnected)
             {
-                //logger.LogInformation("当前已连接到 PPPoE 网络，不需要进行连接。");
+                logger.LogDebug("当前已连接到 PPPoE 网络，不需要进行连接。");
                 return false;
             }
 
