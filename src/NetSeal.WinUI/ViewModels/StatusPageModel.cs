@@ -172,7 +172,7 @@ public partial class StatusPageModel : ObservableObject
 
     async partial void OnSelectedNetworkIndexChanged(int oldValue, int newValue)
     {
-        if (IsSavingSelectedNetworkIndex)
+        if (IsLoading || IsSavingSelectedNetworkIndex)
             return;
 
         if (newValue < 0)
@@ -242,7 +242,7 @@ public partial class StatusPageModel : ObservableObject
 
     async partial void OnAutoConnectOnStartupChanged(bool oldValue, bool newValue)
     {
-        if (IsSavingAutoConnectOnStartup)
+        if (IsLoading || IsSavingAutoConnectOnStartup)
             return;
 
         IsSavingAutoConnectOnStartup = true;
@@ -278,7 +278,7 @@ public partial class StatusPageModel : ObservableObject
 
     async partial void OnReconnectOnWakeChanged(bool oldValue, bool newValue)
     {
-        if (IsSavingReconnectOnWake)
+        if (IsLoading || IsSavingReconnectOnWake)
             return;
 
         IsSavingReconnectOnWake = true;
@@ -314,7 +314,7 @@ public partial class StatusPageModel : ObservableObject
 
     async partial void OnReconnectOnDisconnectChanged(bool oldValue, bool newValue)
     {
-        if (IsSavingReconnectOnDisconnect)
+        if (IsLoading || IsSavingReconnectOnDisconnect)
             return;
 
         IsSavingReconnectOnDisconnect = true;
