@@ -537,6 +537,10 @@ public partial class StatusPageModel : ObservableObject
         {
             ShowDisplayMessage("连接请求被中断。");
         }
+        catch (Exception ex)
+        {
+            ShowDisplayMessage($"发送连接请求时出现意外错误：{ex}");
+        }
         finally
         {
             IsConnecting = false;
@@ -561,6 +565,10 @@ public partial class StatusPageModel : ObservableObject
         catch (RasConnectException ex)
         {
             ShowDisplayMessage($"断开连接请求失败: {ex}");
+        }
+        catch (Exception ex)
+        {
+            ShowDisplayMessage($"发送连接请求时出现意外错误：{ex}");
         }
         finally
         {
