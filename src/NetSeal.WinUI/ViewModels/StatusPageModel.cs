@@ -75,7 +75,7 @@ public partial class StatusPageModel : ObservableObject
     {
         if (value)
         {
-                await UpdateNetworkSettingsAsync();
+            await UpdateNetworkSettingsAsync();
         }
     }
 

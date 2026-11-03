@@ -15,7 +15,7 @@ public sealed class IpcResponse
     };
 
     public static IpcResponse Ok(string? value = null) => new() { Success = true, Value = value };
-    public static string SerializeOk(string? value = null) => JsonSerializer.Serialize(Ok(), JsonOptions);
+    public static string SerializeOk(string? value = null) => JsonSerializer.Serialize(Ok(value), JsonOptions);
     public static IpcResponse Fail(string message) => new() { Success = false, Error = message };
     public static string SerializeFail(string message) => JsonSerializer.Serialize(Fail(message), JsonOptions);
 }
