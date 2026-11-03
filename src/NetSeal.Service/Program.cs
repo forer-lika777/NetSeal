@@ -3,6 +3,7 @@ using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using NetSeal.Service;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -11,11 +12,18 @@ builder.Services.AddWindowsService(options =>
     options.ServiceName = "NetSeal";
 });
 
-builder.Logging.AddEventLog(settings =>
-{
-    settings.SourceName = "NetSeal";
-    settings.LogName = "Application";
-});
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.File(
+        path: @"C:\ProgramData\NetSeal\netseal.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30)
+    .CreateLogger();
+
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog(Log.Logger);
+builder.Logging.AddConsole();
+builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>(null, LogLevel.Debug);
 
 builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
 
