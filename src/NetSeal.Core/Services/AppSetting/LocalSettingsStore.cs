@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using NetSeal.Core.Models.AppSettings;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace NetSeal.Core.Services.AppSetting;
@@ -43,7 +44,7 @@ public class LocalSettingsStore : ISettingsStore
             }
 
             // 解析成字典
-            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            var dict = JsonSerializer.Deserialize(json, StringDictionaryJsonContext.Default.DictionaryStringString);
 
             // 返回指定的 key 的 value
             if (dict != null && dict.TryGetValue(name, out var value))
@@ -76,7 +77,7 @@ public class LocalSettingsStore : ISettingsStore
                 try
                 {
                     var oldJson = await File.ReadAllTextAsync(filePath, ct);
-                    var oldDict = JsonSerializer.Deserialize<Dictionary<string, string>>(oldJson);
+                    var oldDict = JsonSerializer.Deserialize(oldJson, StringDictionaryJsonContext.Default.DictionaryStringString);
                     if (oldDict != null)
                         dict = oldDict;
                 }
@@ -87,7 +88,7 @@ public class LocalSettingsStore : ISettingsStore
             dict[name] = value;
 
             // 3. 序列化成 JSON
-            var newJson = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+            var newJson = JsonSerializer.Serialize(dict, StringDictionaryJsonContext.Default.DictionaryStringString);
 
             // 4. 原子写入：先写临时文件，再替换原文件（防止断电导致文件损坏）
             var tempPath = filePath + ".tmp";

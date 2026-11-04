@@ -1,11 +1,21 @@
 ﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services.Ras;
+using System.Net;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace NetSeal.Core.Services.Network;
 
 public class NetworkService : INetworkService
 {
+    [DllImport("ole32.dll", ExactSpelling = true, PreserveSig = true, CharSet = CharSet.Unicode)]
+    private static extern int CoCreateInstance(
+        ref Guid rclsid,
+        IntPtr pUnkOuter,
+        uint dwClsContext,
+        ref Guid riid,
+        out IntPtr ppv);
+
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
 
@@ -19,14 +29,32 @@ public class NetworkService : INetworkService
 
     public async Task<NetworkConnectivityLevel> GetConnectivityLevelAsync()
     {
-        var connectivity = await Task.Run(() => ((INetworkListManager)new NetworkListManagerClass()).GetConnectivity());
+        NLM_CONNECTIVITY connectivity = await Task.Run(() =>
+        {
+            var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
+            var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
 
+            // 注意：这里改成 hr < 0
+            int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1, ref iid, out IntPtr pUnk);
+            if (hr < 0 || pUnk == IntPtr.Zero)
+                return NLM_CONNECTIVITY.NLM_CONNECTIVITY_DISCONNECTED;
+
+            // 交给 ComWrappers 接管，千万别手动 Release pUnk
+            var wrappers = new StrategyBasedComWrappers();
+            var networkListManager = (INetworkListManager)wrappers.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.None);
+
+            // 直接调用，不需要 try-finally 去管 pUnk 了
+            networkListManager.GetConnectivity(out NLM_CONNECTIVITY conn);
+            return conn;
+        });
+
+        // === 判断逻辑保持原样 ===
         const NLM_CONNECTIVITY internet = NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV4_INTERNET
                                         | NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV6_INTERNET;
         const NLM_CONNECTIVITY local = NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV4_LOCALNETWORK
-                                     | NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV6_LOCALNETWORK;
+                                        | NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV6_LOCALNETWORK;
         const NLM_CONNECTIVITY subnet = NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV4_SUBNET
-                                      | NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV6_SUBNET;
+                                        | NLM_CONNECTIVITY.NLM_CONNECTIVITY_IPV6_SUBNET;
 
         if ((connectivity & internet) != 0)
             return NetworkConnectivityLevel.InternetAccess;
@@ -42,16 +70,21 @@ public class NetworkService : INetworkService
     {
         return await Task.Run(() =>
         {
-            var guids = GetAllINetworks()
-                .Where(n => n.IsConnected)
-                .SelectMany(n => GetAllINetworkConnections(n))
-                .Select(c => c.GetAdapterId())
-                .ToHashSet();
+            var guids = GetActiveNetworkIds();
 
             return adapterService.GetNetworkAdapters()
                 .Where(a => Guid.TryParse(a.Id, out var id) && guids.Contains(id))
                 .ToList();
         });
+    }
+
+    private unsafe HashSet<Guid> GetActiveNetworkIds()
+    {
+        return GetAllINetworks()
+            .Where(n => n.GetIsConnected())
+            .SelectMany(n => GetAllINetworkConnections(n))
+            .Select(c => GetConnectionAdapterId(c))
+            .ToHashSet();
     }
 
     public async Task<List<string>> GetActiveNetworkAdapterNamesAsync()
@@ -77,25 +110,47 @@ public class NetworkService : INetworkService
     /// <returns></returns>
     private static List<INetwork> GetAllINetworks()
     {
-        INetworkListManager networkListManager = (INetworkListManager)new NetworkListManagerClass();
-        IEnumNetworks networks = networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED);
-
         var result = new List<INetwork>();
 
-        nint[] buffer = new IntPtr[1];
+        var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
+        var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
 
-        while (networks.Next(1, buffer, out uint netFetched) == 0 && netFetched == 1)
+        
+        int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1 /*CLSCTX_INPROC_SERVER*/, ref iid, out IntPtr pUnk);
+        if (hr != 0 || pUnk == IntPtr.Zero)
+            return result;
+
+        var wrappers = new StrategyBasedComWrappers();
+        var networkListManager = (INetworkListManager)wrappers.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.None);
+
+        // 3. 调用我们改好的 out 方法
+        networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED, out IEnumNetworks networks);
+
+        if (networks == null)
+            return result;
+
+        nint buffer = Marshal.AllocHGlobal(IntPtr.Size);
+        try
         {
-            try
+            uint fetched = 0;
+            while (networks.Next(1, buffer, out fetched) == 0 && fetched == 1)
             {
-                INetwork? network = (INetwork)Marshal.GetObjectForIUnknown(buffer[0]);
-                result.Add(network);
-            }
-            finally
-            {
-                Marshal.Release(buffer[0]);
+                nint networkPtr = Marshal.ReadIntPtr(buffer);
+                if (networkPtr != IntPtr.Zero)
+                {
+                    var network = (INetwork)wrappers.GetOrCreateObjectForComInstance(networkPtr, CreateObjectFlags.None);
+                    result.Add(network);
+
+                    Marshal.Release(networkPtr);
+                }
             }
         }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+
+        Marshal.Release(pUnk);
 
         return result;
     }
@@ -107,15 +162,31 @@ public class NetworkService : INetworkService
 
         foreach (var network in networks)
         {
+            network.GetName(out nint bstr);
+            string name = Marshal.PtrToStringBSTR(bstr);
+            Marshal.FreeBSTR(bstr);
+
             result.Add(new NetworkItem
             {
-                IsConnected = network.IsConnected,
-                Id = network.GetNetworkId(),
-                Name = network.GetName() ?? "未知网络",
+                IsConnected = network.GetIsConnected(),
+                Id = GetNetworkId(network),
+                Name = name,
             });
         }
 
         return result;
+    }
+
+    private unsafe Guid GetNetworkId(INetwork network)
+    {
+        Guid id;
+        network.GetNetworkId((nint)(&id));
+        return id;
+    }
+
+    private unsafe Guid GetConnectionAdapterId(INetworkConnection connection)
+    {
+        return connection.GetAdapterId();
     }
 
     /// <summary>
@@ -125,7 +196,7 @@ public class NetworkService : INetworkService
     /// <returns></returns>
     private static List<INetworkConnection> GetAllINetworkConnections(INetwork network)
     {
-        IEnumNetworkConnections connections = network.GetNetworkConnections();
+        network.GetNetworkConnections(out IEnumNetworkConnections connections);
 
         var result = new List<INetworkConnection>();
 
@@ -135,8 +206,18 @@ public class NetworkService : INetworkService
         {
             try
             {
-                INetworkConnection connetion = (INetworkConnection)Marshal.GetObjectForIUnknown(buffer[0]);
-                result.Add(connetion);
+                var wrappers = new StrategyBasedComWrappers();
+
+                nint networkConnPtr = buffer[0];
+
+                if (networkConnPtr != IntPtr.Zero)
+                {
+                    var connection = (INetworkConnection)wrappers.GetOrCreateObjectForComInstance(
+                        networkConnPtr,
+                        CreateObjectFlags.None);
+                    result.Add(connection);
+                }
+
             }
             finally
             {
@@ -151,7 +232,7 @@ public class NetworkService : INetworkService
     /// 获取所有接入了以太网的逻辑网络。
     /// </summary>
     /// <returns></returns>
-    public List<NetworkItem> GetAllActiveEthernetAdapterNetworks()
+    private List<NetworkItem> GetAllActiveEthernetAdapterNetworks()
     {
         return GetAllActiveEthernetAdapterNetworks(GetAllINetworks());
     }
@@ -161,7 +242,7 @@ public class NetworkService : INetworkService
     /// </summary>
     /// <param name="networks">要过滤的逻辑网络</param>
     /// <returns></returns>
-    private List<NetworkItem> GetAllActiveEthernetAdapterNetworks(List<INetwork> networks)
+    private unsafe List<NetworkItem> GetAllActiveEthernetAdapterNetworks(List<INetwork> networks)
     {
         var physicalIds = new HashSet<Guid>();
         foreach (var ethernet in adapterService.GetActivePhysicalEthernetAdapters())
@@ -182,13 +263,18 @@ public class NetworkService : INetworkService
             var connections = GetAllINetworkConnections(network);
             foreach (var connection in connections)
             {
-                if (physicalIds.Contains(connection.GetAdapterId()))
+                var connectionId = GetConnectionAdapterId(connection);
+                if (physicalIds.Contains(connectionId))
                 {
+                    network.GetName(out nint bstr);
+                    string name = Marshal.PtrToStringBSTR(bstr);
+                    Marshal.FreeBSTR(bstr);
+
                     result.Add(new NetworkItem
                     {
-                        Name = network.GetName() ?? "未知网络",
-                        Id = network.GetNetworkId(),
-                        IsConnected = network.IsConnected,
+                        Name = name,
+                        Id = GetNetworkId(network),
+                        IsConnected = network.GetIsConnected(),
                     });
                     break;
                 }
@@ -202,9 +288,4 @@ public class NetworkService : INetworkService
     {
         return await Task.Run(() => GetAllActiveEthernetAdapterNetworks());
     }
-
-    //public async Task<ConnectionProfile?> GetInternetConnectionProfileAsync()
-    //{
-    //    return await Task.Run(() => NetworkInformation.GetInternetConnectionProfile());
-    //}
 }

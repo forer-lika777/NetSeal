@@ -61,7 +61,7 @@ public class CoreManager : ICoreManager
         }
     }
 
-    private async Task ForceRefreshAsync()
+    public async Task ForceRefreshAsync()
     {
         await statusLock.WaitAsync();
         try
@@ -110,14 +110,17 @@ public class CoreManager : ICoreManager
         {
             status.IsPppoeNetworkConnected = true;
 
-            if (connection.EntryName != RasEntryName.NetSealServiceEntryName)
+            status.ActivePppoeConnectionEntryName = connection.EntryName;
+
+            if (connection.EntryName == RasEntryName.NetSealServiceEntryName)
             {
-                status.IsPppoeConnectionManagedByOutside = true;
-                status.IsNetworkConnectionManagedByOutside = true;
+                status.IsPppoeConnectionManagedByOutside = false;
+                status.IsNetworkConnectionManagedByOutside = false;
             }
             else
             {
-                status.ActivePppoeConnectionEntryName = connection.EntryName;
+                status.IsNetworkConnectionManagedByOutside = true;
+                status.IsPppoeConnectionManagedByOutside = true;
             }
         }
         else
@@ -130,6 +133,11 @@ public class CoreManager : ICoreManager
             {
                 status.IsNetworkConnectionManagedByOutside = true;
                 status.IsNotPppoeNetworkConnection = true;
+            }
+            else
+            {
+                status.IsNetworkConnectionManagedByOutside = false;
+                status.IsNotPppoeNetworkConnection = false;
             }
         }
     }

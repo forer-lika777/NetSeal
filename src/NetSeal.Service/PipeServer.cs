@@ -17,13 +17,6 @@ public class PipeServer : BackgroundService
     private readonly ServiceState serviceState;
     private readonly Worker worker;
 
-    // 统一的 JSON 序列化选项配置
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = false
-    };
-
     public PipeServer(
         ILogger<PipeServer> logger,
         INetworkSettings appSettings,
@@ -186,7 +179,7 @@ public class PipeServer : BackgroundService
         IpcRequest? request;
         try
         {
-            request = JsonSerializer.Deserialize<IpcRequest>(requestLine, JsonOptions);
+            request = JsonSerializer.Deserialize<IpcRequest>(requestLine, IpcRequestJsonContext.Default.IpcRequest);
         }
         catch (JsonException ex)
         {
@@ -286,7 +279,7 @@ public class PipeServer : BackgroundService
             logger.LogInformation("收到用户连接请求");
             var response = await worker.ConnectRequest(ct).ConfigureAwait(false);
             logger.LogInformation("连接请求完成，结果: Success={Success}", response.Success);
-            return JsonSerializer.Serialize(response);
+            return IpcResponse.SerializeOk();
         }
         catch (Exception ex)
         {

@@ -5,7 +5,6 @@ namespace NetSeal.Core.Services.Network;
 
 public class NetworkAdapterService : INetworkAdapterService
 {
-
     public List<NetworkAdapter> GetNetworkAdapters()
     {
         var interfaces = NetworkInterface.GetAllNetworkInterfaces().ToList();

@@ -4,6 +4,12 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	<PublishAot>true</PublishAot>
+	  <IsAotCompatible>true</IsAotCompatible>
+	  <VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
+	  <IsTrimmable>true</IsTrimmable>
+	  <EnableAotAnalyzer>true</EnableAotAnalyzer>
+	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

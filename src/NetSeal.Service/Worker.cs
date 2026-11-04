@@ -161,7 +161,7 @@ public class Worker : BackgroundService
                 connectRetryCount = -1;
                 lastConnectionSucceeded = true;
                 PollInterval = TimeSpan.FromSeconds(10);
-                ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = true });
+                ConnectInvokedTcs?.TrySetResult(IpcResponse.Ok());
             }
             catch (OperationCanceledException)
             {
@@ -179,14 +179,14 @@ public class Worker : BackgroundService
             {
                 lastConnectionSucceeded = false;
                 logger.LogError(ex, "凭据配置错误。");
-                ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
+                ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
             }
             catch (Exception ex)
             {
                 lastConnectionSucceeded = false;
                 logger.LogError(ex, "服务循环发生异常。");
 
-                ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
+                ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
             }
         }
 
@@ -200,7 +200,7 @@ public class Worker : BackgroundService
 
         if (connectRetryCount == connectRetryLimit)
         {
-            ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
+            ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
             logger.LogInformation("连接失败。当前已达最大连接重试限制次数：{Count}。", connectRetryCount);
             PollInterval = TimeSpan.MaxValue;
             connectRetryCount = -1;
@@ -212,7 +212,7 @@ public class Worker : BackgroundService
             logger.LogInformation("连接失败。当前连接重试次数为：{Count}。将在 {Seconds} 秒后重试。", connectRetryCount, PollInterval.TotalSeconds);
         }
 
-        ConnectInvokedTcs?.TrySetResult(new IpcResponse { Success = false, Error = ex.Message });
+        ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
     }
 
     private void SetRetryPollInterval()
@@ -257,12 +257,12 @@ public class Worker : BackgroundService
         }
         catch (Win32Exception ex)
         {
-            return new IpcResponse { Success = false, Error = ex.Message };
+            return IpcResponse.Fail(ex.Message);
         }
 
         disconnectRequested = true;
 
-        return new IpcResponse { Success = true };
+        return IpcResponse.Ok();
     }
 
     public async Task UpdateAutoConnectPolicyAsync()
@@ -410,7 +410,7 @@ public class Worker : BackgroundService
 
         if (selectedNetwork is not null && !networks.Any(n => n.Id == selectedNetwork.Id))
         {
-            logger.LogInformation($"当前未连接到匹配网络：{selectedNetwork.ToString()}。");
+            logger.LogInformation($"当前未连接到匹配网络：{selectedNetwork.ToString()}，已连接的网络项：{string.Join(",", networks.Select(n => n.ToString()))}");
             return false;
         }
 

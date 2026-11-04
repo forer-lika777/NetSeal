@@ -1,74 +1,74 @@
 ﻿// See https://github.com/mirror/mingw-w64/blob/master/mingw-w64-headers/include/netlistmgr.h
 
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace NetSeal.Core.Services.Network;
 
-[ComImport, Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B")]
-internal class NetworkListManagerClass
+[GeneratedComInterface]
+[Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B")]
+[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+internal partial interface INetworkListManager
 {
+    void GetTypeInfoCount(nint pctinfo);
+    void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo);
+    void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId);
+    void Invoke(int dispIdMember, nint riid, int lcid, short wFlags, nint pDispParams, nint pVarResult, nint pExcepInfo, nint puArgErr);
+
+    void GetNetworks(NLM_ENUM_NETWORK Flags, out IEnumNetworks ppEnumNetworks);
+    void GetNetwork(Guid gdNetworkId, out INetwork ppNetwork);
+    void GetNetworkConnections(out IEnumNetworkConnections ppEnum);
+    void GetNetworkConnection(Guid gdNetworkConnectionId, out INetworkConnection ppNetworkConnection);
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnectedToInternet();
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnected();
+    void GetConnectivity(out NLM_CONNECTIVITY pConnectivity);
 }
 
-[ComImport, Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B")]
+[GeneratedComInterface]
+[Guid("DCB00002-570F-4A9B-8D69-199FDBA5723B")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface INetworkListManager
+internal unsafe partial interface INetwork
 {
-    void GetTypeInfoCount();
-    void GetTypeInfo();
-    void GetIDsOfNames();
-    void Invoke();
+    void GetTypeInfoCount(nint pctinfo);
+    void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo);
+    void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId);
+    void Invoke(int dispIdMember, nint riid, int lcid, short wFlags, nint pDispParams, nint pVarResult, nint pExcepInfo, nint puArgErr);
 
-    [return: MarshalAs(UnmanagedType.Interface)]
-    IEnumNetworks GetNetworks(NLM_ENUM_NETWORK flags);
-    [return: MarshalAs(UnmanagedType.Interface)]
-    INetwork GetNetwork(Guid networkId);
-    [return: MarshalAs(UnmanagedType.Interface)]
-    IEnumNetworkConnections GetNetworkConnections();
-    void GetNetworkConnection(Guid networkConnectionId);
-    bool IsConnectedToInternet { get; }
-    bool IsConnected { get; }
-    NLM_CONNECTIVITY GetConnectivity();
+    void GetName(out nint pszNetworkName);
+    void SetName(nint szNetworkNewName);
+    nint GetDescription();
+    void SetDescription(nint szDescription);
+    void GetNetworkId(nint pgdGuidNetworkId);
+    void GetDomainType(out NLM_DOMAIN_TYPE pNetworkType);
+    void GetNetworkConnections(out IEnumNetworkConnections ppEnumNetworkConnection);
+    void GetTimeCreatedAndConnected(
+        out uint pdwLowDateTimeCreated,
+        out uint pdwHighDateTimeCreated,
+        out uint pdwLowDateTimeConnected,
+        out uint pdwHighDateTimeConnected);
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnectedToInternet();
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnected();
+    void GetConnectivity(out NLM_CONNECTIVITY pConnectivity);
+    void GetCategory(out NLM_NETWORK_CATEGORY pCategory);
+    void SetCategory(NLM_NETWORK_CATEGORY NewCategory);
 }
 
-[ComImport, Guid("DCB00002-570F-4A9B-8D69-199FDBA5723B")]
+[GeneratedComInterface]
+[Guid("DCB00003-570F-4A9B-8D69-199FDBA5723B")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface INetwork
+internal partial interface IEnumNetworks
 {
-    void GetTypeInfoCount();
-    void GetTypeInfo();
-    void GetIDsOfNames();
-    void Invoke();
+    void GetTypeInfoCount(nint pctinfo);
+    void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo);
+    void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId);
+    void Invoke(int dispIdMember, nint riid, int lcid, short wFlags, nint pDispParams, nint pVarResult, nint pExcepInfo, nint puArgErr);
 
-    string? GetName();
-    void SetName();
-    string GetDescription();
-    void SetDescription();
-    Guid GetNetworkId();
-    void GetDomainType();
-    IEnumNetworkConnections GetNetworkConnections();
-    void GetTimeCreatedAndConnected();
-    bool IsConnectedToInternet { get; }
-    bool IsConnected { get; }
-    void GetConnectivity();
-    NLM_NETWORK_CATEGORY GetCategory();
-    void SetCategory();    // 占位
-}
-
-[ComImport, Guid("DCB00003-570F-4A9B-8D69-199FDBA5723B")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IEnumNetworks
-{
-    void GetTypeInfoCount();
-    void GetTypeInfo();
-    void GetIDsOfNames();
-    void Invoke();
-
-    object NewEnum { get; }
+    nint get_NewEnum();
 
     [PreserveSig]
     int Next(
         uint celt,
-        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IntPtr[] rgelt,
+        nint rgelt,
         out uint pceltFetched);
 
     void Skip(uint celt);
@@ -78,34 +78,36 @@ internal interface IEnumNetworks
     void Clone(out IEnumNetworks ppEnumNetwork);
 }
 
-[ComImport, Guid("DCB00005-570F-4A9B-8D69-199FDBA5723B")]
+[GeneratedComInterface]
+[Guid("DCB00005-570F-4A9B-8D69-199FDBA5723B")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface INetworkConnection
+internal partial interface INetworkConnection
 {
-    void GetTypeInfoCount();
-    void GetTypeInfo();
-    void GetIDsOfNames();
-    void Invoke();
+    void GetTypeInfoCount(nint pctinfo);
+    void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo);
+    void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId);
+    void Invoke(int dispIdMember, nint riid, int lcid, short wFlags, nint pDispParams, nint pVarResult, nint pExcepInfo, nint puArgErr);
 
-    INetwork GetNetwork();
-    bool IsConnectedToInternet { get; }
-    bool IsConnected { get; }
-    void GetConnectivity();
+    void GetNetwork(out INetwork network);
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnectedToInternet();
+    [return: MarshalAs(UnmanagedType.VariantBool)] bool GetIsConnected();
+    void GetConnectivity(out NLM_CONNECTIVITY pConnectivity);
     Guid GetConnectionId();
     Guid GetAdapterId();
-    void GetDomainType();
+    void GetDomainType(out NLM_DOMAIN_TYPE pDomainType);
 }
 
-[ComImport, Guid("DCB00006-570F-4A9B-8D69-199FDBA5723B")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IEnumNetworkConnections
+[GeneratedComInterface]
+[Guid("DCB00006-570F-4A9B-8D69-199FDBA5723B")]
+[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+internal partial interface IEnumNetworkConnections
 {
-    void GetTypeInfoCount();
-    void GetTypeInfo();
-    void GetIDsOfNames();
-    void Invoke();
+    void GetTypeInfoCount(nint pctinfo);
+    void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo);
+    void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId);
+    void Invoke(int dispIdMember, nint riid, int lcid, short wFlags, nint pDispParams, nint pVarResult, nint pExcepInfo, nint puArgErr);
 
-    object NewEnum { get; }
+    nint get_NewEnum();
 
     [PreserveSig]
     int Next(
@@ -204,4 +206,11 @@ internal enum NLM_NETWORK_CATEGORY
     /// 针对 Active Directory 域对网络进行身份验证。
     /// </summary>
     NLM_NETWORK_CATEGORY_DOMAIN_AUTHENTICATED = 0x2,
+}
+
+internal enum NLM_DOMAIN_TYPE
+{
+    NLM_DOMAIN_TYPE_NON_DOMAIN_NETWORK = 0x0,
+    NLM_DOMAIN_TYPE_DOMAIN_NETWORK = 0x1,
+    NLM_DOMAIN_TYPE_DOMAIN_AUTHENTICATED = 0x2
 }
