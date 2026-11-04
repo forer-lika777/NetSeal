@@ -61,6 +61,8 @@ public class Worker : BackgroundService
     /// </summary>
     private bool disconnectRequested = false;
 
+    private bool connectRequested = false;
+
     /// <summary>
     /// 跟踪上一次连接是否成功，用于判断是否发生了意外断连。
     /// </summary>
@@ -132,7 +134,14 @@ public class Worker : BackgroundService
             serviceJustStarted = false;
 
             if (!shouldConnect)
+            {
+                if (connectRequested)
+                {
+                    ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail("当前网络不符合连接要求。"));
+                }
+
                 continue;
+            }
 
             try
             {
@@ -218,6 +227,7 @@ public class Worker : BackgroundService
     {
         // 设置标志触发连接
         disconnectRequested = false;
+        connectRequested = true;
         //lastConnectionSucceeded = true;
         logger.LogInformation("用户请求连接");
 
@@ -326,6 +336,12 @@ public class Worker : BackgroundService
             var now = timeProvider.GetLocalNow().DateTime;
             var timeDrift = now - lastCheckTime;
             lastCheckTime = now;
+
+            if (connectRequested)
+            {
+                connectRequested = false;
+                return GetCanConnect();
+            }
 
             // 已经连接 PPPoE 网络
             if (isPppoeNetworkConnected)
