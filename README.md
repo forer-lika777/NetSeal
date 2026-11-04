@@ -31,5 +31,3 @@ Reimu's NetSeal 的技术栈
 上古老坟 -> https://learn.microsoft.com/en-us/windows/win32/api/ras/
 
 WinUI 3 -> https://learn.microsoft.com/en-us/windows/apps/winui/winui3/
-
-HeatWave -> https://www.firegiant.com/heatwave/
