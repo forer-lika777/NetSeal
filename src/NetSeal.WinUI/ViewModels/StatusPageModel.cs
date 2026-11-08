@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace NetSeal.WinUI.ViewModels;
 
-public partial class StatusPageModel : ObservableObject
+public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshingStatusMessage>, IRecipient<ModifyCredentialsMessage>
 {
     private readonly INetworkSettings settings;
     private readonly IUiDispatcher dispatcher;
@@ -31,6 +31,8 @@ public partial class StatusPageModel : ObservableObject
     private CancellationTokenSource? connectCts = null;
     private bool initialized = false;
 
+    private CancellationTokenSource? keepRefreshStatusCts = null;
+
     public StatusPageModel(
         INetworkSettings appSettings,
         IUiDispatcher dispatcher,
@@ -43,6 +45,8 @@ public partial class StatusPageModel : ObservableObject
         this.pipeClient = pipeClient;
         _ = InitializeAsync();
         coreManager.NetworkStatusChanged += CoreManager_NetworkStatusChanged;
+        StrongReferenceMessenger.Default.Register<KeepRefreshingStatusMessage>(this);
+        StrongReferenceMessenger.Default.Register<ModifyCredentialsMessage>(this);
     }
 
     private async void CoreManager_NetworkStatusChanged(object? sender, EventArgs e)
@@ -59,6 +63,27 @@ public partial class StatusPageModel : ObservableObject
         await UpdateNetworkStatusAsync();
     }
 
+    public void Receive(KeepRefreshingStatusMessage message)
+    {
+        if (message.doKeep)
+        {
+            if (keepRefreshStatusCts is not null)
+                return;
+
+            ResetCts(ref keepRefreshStatusCts);
+            _ = CycleCheckServiceStatusAsync();
+        }
+        else
+        {
+            CancelCts(ref keepRefreshStatusCts);
+        }
+    }
+
+    public void Receive(ModifyCredentialsMessage message)
+    {
+        HasRasCredentials = message.HasCredentials;
+    }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(
         nameof(ConnectCommand),
@@ -73,20 +98,35 @@ public partial class StatusPageModel : ObservableObject
 
     async partial void OnServiceConnectedChanged(bool value)
     {
+        if (IsLoading)
+            return;
+
         if (value)
-        {
             await UpdateNetworkSettingsAsync();
-        }
     }
 
     private async Task CycleCheckServiceStatusAsync()
     {
-
-        while (true)
+        try
         {
-            using var cts = new CancellationTokenSource(5000);
-            await CheckServiceStatusAsync(cts.Token);
-            await Task.Delay(10000);
+            while (true)
+            {
+                using var timeoutCts = new CancellationTokenSource(5000);
+                try
+                {
+                    await CheckServiceStatusAsync(timeoutCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+
+                }
+
+                await Task.Delay(10000, keepRefreshStatusCts?.Token ?? CancellationToken.None);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
     }
 
@@ -202,8 +242,7 @@ public partial class StatusPageModel : ObservableObject
 
         SelectedNetwork = Networks[(int)newValue];
         await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
-        await settings.HasSavedNetworkAuth.SetValueAsync(true);
-
+        
         OnPropertyChanged(nameof(SelectedNetwork));
     }
 
@@ -336,12 +375,17 @@ public partial class StatusPageModel : ObservableObject
         }
     }
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(
+        nameof(ConnectCommand),
+        nameof(ResetRasConnectionCommand))]
+    public partial bool HasRasCredentials { get; set; } = true;
+
     private async Task InitializeAsync()
     {
         if (initialized)
             return;
 
-        initialized = true;
 
         IsLoading = true;
 
@@ -364,17 +408,17 @@ public partial class StatusPageModel : ObservableObject
             IsLoading = false;
             _ = CycleCheckServiceStatusAsync();
         });
+
+        initialized = true;
     }
 
     private async Task UpdateNetworkSettingsAsync()
     {
         try
         {
-            bool hasNetworkAuth = false;
+            var network = await settings.SelectedNetwork.GetValueAsync();
 
-            hasNetworkAuth = await settings.HasSavedNetworkAuth.GetValueAsync();
-
-            if (hasNetworkAuth)
+            if (network is not null)
             {
                 SelectedNetwork = await settings.SelectedNetwork.GetValueAsync();
                 var item = Networks.FirstOrDefault(c => c.Id == SelectedNetwork?.Id);
@@ -389,6 +433,8 @@ public partial class StatusPageModel : ObservableObject
             AutoConnectOnStartup = autoConnect.AutoConnectOnStartup;
             ReconnectOnWake = autoConnect.ReconnectOnWake;
             ReconnectOnDisconnect = autoConnect.ReconnectOnDisconnect;
+
+            HasRasCredentials = await settings.HasRasCredentials.GetValueAsync();
         }
         catch (Exception ex)
         {
@@ -475,6 +521,9 @@ public partial class StatusPageModel : ObservableObject
             return false;
 
         if (IsConnecting)
+            return false;
+
+        if (!HasRasCredentials)
             return false;
 
         // 没有匹配的逻辑网络
@@ -580,6 +629,9 @@ public partial class StatusPageModel : ObservableObject
         if (IsLoading)
             return false;
 
+        if (!HasRasCredentials)
+            return false;
+
         return true;
     }
 
@@ -615,8 +667,6 @@ public partial class StatusPageModel : ObservableObject
 
         if (!response.Success)
             throw new RasConnectException($"连接请求失败: {response.Error}");
-
-        await settings.HasSavedNetworkAuth.SetValueAsync(true);
 
         if (SelectedNetwork is not null)
             await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);

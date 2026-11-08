@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
 using System;
@@ -105,6 +106,8 @@ public partial class CredentialsEnterViewModel : ObservableObject
 
             var credentials = new RasCredentials(Username, Password);
             await settings.RasCredentials.SetValueAsync(credentials);
+
+            StrongReferenceMessenger.Default.Send<ModifyCredentialsMessage>(new ModifyCredentialsMessage(true));
         }
         catch (OperationCanceledException)
         {

@@ -25,12 +25,14 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
     {
         base.OnNavigatedTo(e);
         StrongReferenceMessenger.Default.Register<ChangeNetworkConfirmMessage>(this);
+        StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(true));
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
         StrongReferenceMessenger.Default.Unregister<ChangeNetworkConfirmMessage>(this);
+        StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(false));
     }
 
     public async void Receive(ChangeNetworkConfirmMessage message)
