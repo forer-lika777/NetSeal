@@ -3,9 +3,7 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-**/Payload/
-
-nuget.config
+src/NetSeal.InnoSetup/
 
 # User-specific files
 *.rsuser
