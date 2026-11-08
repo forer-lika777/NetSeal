@@ -145,10 +145,8 @@ public class Worker : BackgroundService
 
             try
             {
-                if (string.IsNullOrWhiteSpace(rasCredentials.Username) || string.IsNullOrWhiteSpace(rasCredentials.Password))
-                {
-                    throw new CredentialsInvalidError("当前本地配置项的凭据设置不正确（账户名或密码为空）。");
-                }
+                if (rasCredentials is null)
+                    throw new CredentialsInvalidError("当前还未配置凭据设置。");
 
                 await rasDialer.RasConnectAsync(
                     phoneBookPath,
@@ -287,6 +285,7 @@ public class Worker : BackgroundService
 
     public async Task UpdateRasCredentrialsAsync()
     {
+        await settings.HasRasCredentials.SetValueAsync(true);
         var newCredentials = await settings.RasCredentials.GetValueAsync();
         lock (lockObject)
         {

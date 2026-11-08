@@ -9,7 +9,7 @@ namespace NetSeal.Core.Services.AppSetting;
 /// 共享的键值项基类。处理值存储、类型判断、JSON 序列化/反序列化。
 /// 不包含任何存储介质逻辑（本地或远程）。
 /// </summary>
-public abstract class KeyItemBase<T> where T : notnull
+public abstract class KeyItemBase<T>
 {
     protected readonly ISettingsStore settingsStore;
 
@@ -68,16 +68,15 @@ public abstract class KeyItemBase<T> where T : notnull
         }
     }
 
-    protected string GetStringValue(T value)
+    protected string? GetStringValue(T value)
     {
         try
         {
-            string stringValue;
+            string? stringValue;
 
             if (IsDirectlySupported)
             {
-                stringValue = Convert.ToString(value, CultureInfo.InvariantCulture) ??
-                    throw new NullReferenceException($"无法转换的 null 引用：{typeof(T).Name}。");
+                stringValue = Convert.ToString(value, CultureInfo.InvariantCulture);
             }
             else
             {

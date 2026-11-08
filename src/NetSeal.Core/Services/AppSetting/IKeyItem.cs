@@ -1,6 +1,6 @@
 ﻿namespace NetSeal.Core.Services.AppSetting;
 
-public interface IKeyItem<T> where T : notnull
+public interface IKeyItem<T>
 {
     public string Name { get; }
 

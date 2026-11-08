@@ -8,14 +8,9 @@ public class NetworkSettings([FromKeyedServices("service")] ISettingsStore setti
     private readonly ISettingsStore settingsStore = settingsStore;
 
     /// <summary>
-    /// 保存是否处于登录状态的键值。
-    /// </summary>
-    public IKeyItem<bool> HasSavedNetworkAuth { get; } = new KeyItem<bool>(settingsStore, nameof(HasSavedNetworkAuth), false);
-
-    /// <summary>
     /// 保存已选网络。
     /// </summary>
-    public IKeyItem<NetworkItem> SelectedNetwork { get; } = new KeyItem<NetworkItem>(settingsStore, nameof(SelectedNetwork), new NetworkItem(), NetworkItemJsonContext.Default);
+    public IKeyItem<NetworkItem?> SelectedNetwork { get; } = new KeyItem<NetworkItem?>(settingsStore, nameof(SelectedNetwork), null, NetworkItemJsonContext.Default);
 
     /// <summary>
     /// 自动连接配置。
@@ -23,7 +18,12 @@ public class NetworkSettings([FromKeyedServices("service")] ISettingsStore setti
     public IKeyItem<AutoConnectPolicy> AutoConnectPolicy { get; } = new KeyItem<AutoConnectPolicy>(settingsStore, nameof(AutoConnectPolicy), new AutoConnectPolicy(), AutoConnectPolicyJsonContext.Default);
 
     /// <summary>
+    /// 是否配置了凭据。
+    /// </summary>
+    public IKeyItem<bool> HasRasCredentials { get; } = new KeyItem<bool>(settingsStore, nameof(HasRasCredentials), false);
+
+    /// <summary>
     /// 登录凭据。
     /// </summary>
-    public IKeyItem<RasCredentials> RasCredentials { get; } = new SecureKeyItem<RasCredentials>(settingsStore, nameof(RasCredentials), new RasCredentials(), RasCredentialsJsonContext.Default);
+    public IKeyItem<RasCredentials?> RasCredentials { get; } = new SecureKeyItem<RasCredentials?>(settingsStore, nameof(RasCredentials), null, RasCredentialsJsonContext.Default);
 }

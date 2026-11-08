@@ -4,8 +4,8 @@ namespace NetSeal.Core.Services.AppSetting;
 
 public interface INetworkSettings
 {
-    public IKeyItem<bool> HasSavedNetworkAuth { get; }
-    public IKeyItem<NetworkItem> SelectedNetwork { get; }
+    public IKeyItem<NetworkItem?> SelectedNetwork { get; }
     public IKeyItem<AutoConnectPolicy> AutoConnectPolicy { get; }
-    public IKeyItem<RasCredentials> RasCredentials { get; }
+    public IKeyItem<bool> HasRasCredentials { get; }
+    public IKeyItem<RasCredentials?> RasCredentials { get; }
 }

@@ -11,7 +11,7 @@ namespace NetSeal.Core.Services.AppSetting;
 /// 接受的的基础类型：bool, string, int, uint, long, ulong, float, double, char, DateTime, TimeSpan, Guid, byte[].
 /// </summary>
 /// <typeparam name="T">存储的值的类型。</typeparam>
-public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
+public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T>
 {
     public KeyItem(ISettingsStore settingsStore, string name, T defaultValue, JsonSerializerContext? context = null) : base(settingsStore, name, defaultValue, context)
     {
@@ -46,20 +46,27 @@ public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
         if (EqualityComparer<T>.Default.Equals(this.value, value))
             return;
 
-        string raw = GetStringValue(value);
+        string? raw = GetStringValue(value);
+
+        if (raw == null)
+            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+
         await settingsStore.SetAsync(Name, raw, ct);
         this.value = value;
     }
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
-        string raw = GetStringValue(value);
+        string? raw = GetStringValue(value);
+
+        if (raw == null)
+            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         await settingsStore.SetAsync(Name, raw, ct);
     }
 }
 
-public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
+public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T>
 {
     public SecureKeyItem(ISettingsStore settingsStore, string name, T defaultValue, JsonSerializerContext? Context = null) : base(settingsStore, name, defaultValue, Context)
     {
@@ -104,7 +111,11 @@ public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
         if (EqualityComparer<T>.Default.Equals(this.value, value))
             return;
 
-        string raw = GetStringValue(value);
+        string? raw = GetStringValue(value);
+
+        if (raw == null)
+            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+
         string encrypted = Encrypt(raw);
         await settingsStore.SetAsync(Name, encrypted, ct);
         this.value = value;
@@ -112,7 +123,10 @@ public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T> where T : notnull
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
-        string raw = GetStringValue(value);
+        string? raw = GetStringValue(value);
+
+        if (raw == null)
+            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         string encrypted = Encrypt(raw);
 
