@@ -20,7 +20,7 @@
             <TextBlock Grid.Row="0" Margin="32, 44, 0, 0" Text="状态设置" FontSize="32"/>
 
             <ScrollViewer Grid.Row="1" Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
-                <StackPanel Spacing="16" Padding="24, 0, 24, 64" Margin="16, 0">
+                <StackPanel Spacing="16" Padding="24, 0, 24, 64">
                     <win:StackPanel.ChildrenTransitions>
                         <TransitionCollection>
                             <win:RepositionThemeTransition IsStaggeringEnabled="False"/>
@@ -75,7 +75,7 @@
                     </InfoBar>
 
                     <InfoBar Visibility="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"
-                                 IsOpen="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside}" Severity="Warning" IsClosable="False"
+                                 IsOpen="{x:Bind ViewModel.IsPppoeConnectionManagedByOutside, Mode=OneWay}" Severity="Warning" IsClosable="False"
                                  Title="提示" Message="您当前正在使用外部的 pppoe 网络拨号连接。">
                         <StackPanel Margin="0, 0, 16, 16" Spacing="16">
                             <TextBlock TextWrapping="Wrap">
@@ -86,6 +86,10 @@
                                         Command="{x:Bind ViewModel.ResetRasConnectionCommand}"/>
                         </StackPanel>
                     </InfoBar>
+
+                    <InfoBar Visibility="{x:Bind ViewModel.HasRasCredentials, Converter={StaticResource BoolToReversedVisibilityConverter}, Mode=OneWay}"
+                             IsOpen="{x:Bind ViewModel.HasRasCredentials, Converter={StaticResource ReversedBoolConverter}, Mode=OneWay}" Severity="Warning" IsClosable="False"
+                             Title="凭据未设置" Message="在执行操作前，您必须先设置拨号连接的凭据。"/>
 
                     <StackPanel Spacing="16">
                         <StackPanel Orientation="Horizontal" Spacing="2">

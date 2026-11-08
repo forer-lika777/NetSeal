@@ -41,6 +41,7 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
         {
             XamlRoot = this.XamlRoot,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            RequestedTheme = this.ActualTheme,
             PrimaryButtonText = "确定",
             SecondaryButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,
@@ -53,19 +54,6 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
 
         await dialog.ShowAsync();
     }
-
-    //private void PasswordEnterBox_GotFocus(object sender, RoutedEventArgs e)
-    //{
-    //    PasswordEnterBox.SelectAll();
-    //}
-
-    //private void UsernameEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    //{
-    //    if (e.Key != Windows.System.VirtualKey.Enter)
-    //        return;
-
-    //    PasswordEnterBox.Focus(FocusState.Programmatic);
-    //}
 
     private void PasswordEnterBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -88,6 +76,7 @@ public sealed partial class StatusPage : Page, IRecipient<ChangeNetworkConfirmMe
         {
             XamlRoot = this.XamlRoot,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+            RequestedTheme = this.ActualTheme,
             PrimaryButtonText = "确定",
             SecondaryButtonText = "取消",
             DefaultButton = ContentDialogButton.Primary,

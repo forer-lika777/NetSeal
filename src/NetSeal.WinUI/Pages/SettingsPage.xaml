@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:NetSeal.WinUI.Pages"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:ui="using:CommunityToolkit.WinUI"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -15,11 +16,28 @@
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" Margin="32, 44, 0, 0" Text="设置" FontSize="32"/>
         <ScrollViewer Grid.Row="1" Padding="0, 16">
-            <StackPanel Spacing="24" Padding="24, 0, 24, 64">
-                <controls:SettingsCard Header="深浅色模式切换" Description="设置应用的深浅色模式">
-                    <ComboBox ItemsSource="{x:Bind ViewModel.LightDarkModeDisplayCollection}"
-                      SelectedIndex="{x:Bind ViewModel.SelectedLightDarkModeIndex, Mode=TwoWay}"/>
-                </controls:SettingsCard>
+            <StackPanel Spacing="16" Padding="24, 0, 24, 64">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="外观和样式" Margin="4, 0"/>
+                    <controls:SettingsCard Header="应用主题" Description="设置应用的深浅色主题样式" HeaderIcon="{ui:FontIcon Glyph=&#xE790;}">
+                        <ComboBox ItemsSource="{x:Bind ViewModel.LightDarkModeDisplayCollection}" SelectedIndex="{x:Bind ViewModel.SelectedLightDarkModeIndex, Mode=TwoWay}"/>
+                    </controls:SettingsCard>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="关于" Margin="4, 0"/>
+                    <controls:SettingsExpander Header="Reimu's NetSeal" Description="© 2026 forer4433。保留所有权利。"
+                                               HeaderIcon="{ui:BitmapIcon Source=ms-appx:///Assets/reimu1.jpg}">
+                        <TextBlock Text="版本 1.1.0"/>
+                        <controls:SettingsExpander.Items>
+                            <controls:SettingsCard Header="在 Github 上查看" ActionIcon="{ui:FontIcon Glyph=&#xE8A7;}" 
+                                                   IsClickEnabled="True" Click="OpenRepo_Click" />
+                            <controls:SettingsCard ContentAlignment="Left">
+                                <HyperlinkButton x:Name="PermissionHyperLinkButton" Content="项目协议" Click="PermissionHyperLinkButton_Click"/>
+                            </controls:SettingsCard>
+                        </controls:SettingsExpander.Items>
+                    </controls:SettingsExpander>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -9,15 +9,15 @@
     mc:Ignorable="d">
 
     <Grid>
+        <ParallaxView Source="{Binding ElementName=MainFrame, Path=Content}" VerticalShift="200" MaxVerticalShiftRatio="0.2">
+            <Image Source="/Assets/background.jpg" Opacity="1" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </ParallaxView>
+        <Rectangle Fill="{ThemeResource ControlOnImageFillColorDefaultBrush}" Opacity="0.7"/>
         <NavigationView x:Name="NavigationView" IsSettingsVisible="True" 
-                        PaneDisplayMode="LeftCompact" ItemInvoked="NavigationView_ItemInvoked" 
+                        PaneDisplayMode="Auto" ItemInvoked="NavigationView_ItemInvoked" 
                         IsBackEnabled="True" BackRequested="NavigationView_BackRequested" >
             <NavigationView.Content>
                 <Grid>
-                    <ParallaxView Source="{Binding ElementName=MainFrame, Path=Content}" VerticalShift="200" MaxVerticalShiftRatio="0.2">
-                        <Image Source="/Assets/background.jpg" Opacity="0.7" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </ParallaxView>
-                    <Rectangle Fill="{ThemeResource ControlOnImageFillColorDefaultBrush}" Opacity="0.6"/>
                     <Frame x:Name="MainFrame"/>
                 </Grid>
             </NavigationView.Content>
