@@ -24,7 +24,7 @@ public class RemoteSettingsStore : ISettingsStore
 
         string raw = await client.SendCommandAsync(request, cts.Token);
 
-        var resp = IpcUtils.ParseResponse(raw);
+        var resp = IpcResponse.ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"读取设置失败: {resp.Error}");
 
@@ -40,7 +40,7 @@ public class RemoteSettingsStore : ISettingsStore
 
         string raw = await client.SendCommandAsync(request, cts.Token);
 
-        var resp = IpcUtils.ParseResponse(raw);
+        var resp = IpcResponse.ParseResponse(raw);
         if (!resp.Success)
             throw new IOException($"保存设置失败: {resp.Error}");
     }

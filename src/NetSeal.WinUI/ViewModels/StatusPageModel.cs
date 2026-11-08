@@ -611,7 +611,7 @@ public partial class StatusPageModel : ObservableObject
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect });
         string raw = await pipeClient.SendCommandAsync(request, connectCts!.Token);
 
-        var response = IpcUtils.ParseResponse(raw);
+        var response = IpcResponse.ParseResponse(raw);
 
         if (!response.Success)
             throw new RasConnectException($"连接请求失败: {response.Error}");
@@ -629,7 +629,7 @@ public partial class StatusPageModel : ObservableObject
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasDisconnect });
         string raw = await pipeClient.SendCommandAsync(request);
 
-        var response = IpcUtils.ParseResponse(raw);
+        var response = IpcResponse.ParseResponse(raw);
 
         if (!response.Success)
             throw new RasConnectException($"断开连接请求失败: {response.Error}");
