@@ -40,13 +40,15 @@ public class PipeServer : BackgroundService
             new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null),
             PipeAccessRights.FullControl, AccessControlType.Allow));
 
-        RestartAsAdmin();
+        if (!IsAdministrator())
+            RestartAsAdmin();
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            NamedPipeServerStream? serverStream = null;
             try
             {
-                using var serverStream = NamedPipeServerStreamAcl.Create(
+                serverStream = NamedPipeServerStreamAcl.Create(
                     IpcPipeName.NetSealServiceIpcPipeName,
                     PipeDirection.InOut,
                     10,
@@ -60,7 +62,26 @@ public class PipeServer : BackgroundService
                 await serverStream.WaitForConnectionAsync(stoppingToken);
                 logger.LogDebug("服务已接收到客户端连接");
 
-                await HandleClientAsync(serverStream, stoppingToken);
+                var currentStream = serverStream;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await HandleClientAsync(currentStream, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "处理客户端请求时异常");
+                    }
+                    finally
+                    {
+                        // 任务结束时，释放流
+                        currentStream.Dispose();
+                    }
+                }, stoppingToken);
+
+                serverStream = null;
             }
             catch (OperationCanceledException)
             {
@@ -70,6 +91,13 @@ public class PipeServer : BackgroundService
             {
                 logger.LogError(ex, "管道通信异常");
                 await Task.Delay(1000, stoppingToken);
+            }
+            finally
+            {
+                if (serverStream != null)
+                {
+                    await serverStream.DisposeAsync();
+                }
             }
         }
     }
@@ -97,7 +125,7 @@ public class PipeServer : BackgroundService
                 }
                 catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
                 {
-                    logger.LogWarning("客户端心跳超时，强制断开");
+                    logger.LogWarning("客户端心跳超时，已强制断开");
                     break;
                 }
 
@@ -123,7 +151,7 @@ public class PipeServer : BackgroundService
         }
         catch (IOException)
         {
-            logger.LogWarning("客户端异常断开");
+            logger.LogWarning("客户端连接异常断开");
         }
     }
 
@@ -155,10 +183,10 @@ public class PipeServer : BackgroundService
 
         var processInfo = new ProcessStartInfo
         {
-            UseShellExecute = true, // 必须为 true 才能弹 UAC
+            UseShellExecute = true,
             WorkingDirectory = Environment.CurrentDirectory,
             FileName = Process.GetCurrentProcess().MainModule?.FileName,
-            Verb = "runas", // 关键：触发 UAC
+            Verb = "runas",
             Arguments = args
         };
 
@@ -169,7 +197,6 @@ public class PipeServer : BackgroundService
         }
         catch (System.ComponentModel.Win32Exception)
         {
-            // 用户点击了 UAC 的“否”
             logger.LogWarning("未获取到权限（以非管理员模式运行程序会导致某些操作无法执行）。");
         }
     }
