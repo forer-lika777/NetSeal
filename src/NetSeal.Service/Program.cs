@@ -13,7 +13,11 @@ builder.Services.AddWindowsService(options =>
 });
 
 Log.Logger = new LoggerConfiguration()
+#if DEBUG
     .MinimumLevel.Debug()
+#else
+    .MinimumLevel.Information()
+#endif
     .WriteTo.File(
         path: @"C:\ProgramData\NetSeal\netseal.log",
         rollingInterval: RollingInterval.Day,
@@ -23,7 +27,11 @@ Log.Logger = new LoggerConfiguration()
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger);
 builder.Logging.AddConsole();
+#if DEBUG
 builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>(null, LogLevel.Debug);
+#else
+builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>(null, LogLevel.Information);
+#endif
 
 builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
 

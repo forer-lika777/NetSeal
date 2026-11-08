@@ -1,4 +1,5 @@
-﻿using NetSeal.Core.Models;
+﻿#if DEBUG
+using NetSeal.Core.Models;
 using NetSeal.Core.Services.Ras;
 
 namespace NetSeal.Core.Services;
@@ -148,4 +149,10 @@ public class MockNetworkStatusManagerService : ICoreManager, IRasDialer
     {
         throw new NotImplementedException();
     }
+
+    public Task ForceRefreshAsync()
+    {
+        throw new NotImplementedException();
+    }
 }
+#endif
