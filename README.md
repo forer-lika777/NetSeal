@@ -35,6 +35,8 @@ Reimu's NetSeal 项目中，约 7~10％ 的代码使用 AI 辅助生成。
 另请参阅
 ---
 
-上古老坟 -> https://learn.microsoft.com/en-us/windows/win32/api/ras/
+上古老坟 -> https://learn.microsoft.com/windows/win32/api/ras/
 
-WinUI 3 -> https://learn.microsoft.com/en-us/windows/apps/winui/winui3/
+WinUI 3 -> https://learn.microsoft.com/windows/apps/winui/winui3/
+
+Windows 中的新式待机 -> https://learn.microsoft.com/windows-hardware/design/device-experiences/networking-power-management-for-modern-standby-platforms
