@@ -1,7 +1,7 @@
 ﻿Reimu's NetSeal
 ===
 
-Reimu's NetSeal 是 forer4433 在广东工业大学自动网络拨号连接的 Windows 桌面应用。
+Reimu's NetSeal 是一个自动网络拨号连接的 Windows 桌面应用。
 
 Reimu's NetSeal 是一个实验性项目，目前仍处于开发阶段。
 
