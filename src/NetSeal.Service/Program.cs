@@ -20,7 +20,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
 #endif
     .WriteTo.File(
-        path: @"C:\ProgramData\NetSeal\netseal.log",
+        path: @"C:\ProgramData\NetSeal\logs\.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30)
     .CreateLogger();

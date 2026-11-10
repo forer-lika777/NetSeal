@@ -17,7 +17,7 @@
                 <RowDefinition Height="96"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Margin="32, 44, 0, 0" Text="状态设置" FontSize="32"/>
+            <TextBlock Grid.Row="0" Margin="32, 44, 0, 0" Text="状态管理" FontSize="32"/>
 
             <ScrollViewer Grid.Row="1" Name="ContentScrollViewer" VerticalAnchorRatio="0.1">
                 <StackPanel Spacing="16" Padding="24, 0, 24, 64">

@@ -24,12 +24,14 @@
                     </controls:SettingsCard>
                 </StackPanel>
 
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="4">
                     <TextBlock Text="关于" Margin="4, 0"/>
                     <controls:SettingsExpander Header="Reimu's NetSeal" Description="© 2026 forer4433。保留所有权利。"
                                                HeaderIcon="{ui:BitmapIcon Source=ms-appx:///Assets/reimu1.jpg}">
                         <TextBlock Text="版本 1.1.0"/>
                         <controls:SettingsExpander.Items>
+                            <controls:SettingsCard Header="打开日志文件夹" ActionIcon="{ui:FontIcon Glyph=&#xE8A7;}" 
+                                                   IsClickEnabled="True" Click="OpenLog_Click"/>
                             <controls:SettingsCard Header="在 Github 上查看" ActionIcon="{ui:FontIcon Glyph=&#xE8A7;}" 
                                                    IsClickEnabled="True" Click="OpenRepo_Click" />
                             <controls:SettingsCard ContentAlignment="Left">

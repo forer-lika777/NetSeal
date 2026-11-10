@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using NetSeal.WinUI.ViewModels;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Windows.System;
@@ -59,5 +60,26 @@ public sealed partial class SettingsPage : Page
     {
         Uri repoUri = new Uri("https://github.com/forer-lika777/NetSeal");
         await Launcher.LaunchUriAsync(repoUri);
+    }
+
+    private async void OpenLog_Click(object sender, RoutedEventArgs e)
+    {
+        string logPath = @"C:\ProgramData\NetSeal\logs";
+
+        try
+        {
+            if (Directory.Exists(logPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = logPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"打开日志文件夹失败: {ex.Message}");
+        }
     }
 }
