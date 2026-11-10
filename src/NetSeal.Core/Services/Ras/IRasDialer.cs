@@ -92,7 +92,7 @@ public interface IRasDialer
     /// <summary>
     /// <para>断开指定电话簿中的指定条目。</para>
     /// <para>请注意，如果进程会话不具备管理员权限，并且如果条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// 那么 <see cref="RasDisconnectAsync(string?, CancellationToken)"/> 将可能调用成功，且不会执行断开操作。</para>
     /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
@@ -115,7 +115,7 @@ public interface IRasDialer
     /// <summary>
     /// <para>检查条目连接是否在当前进程会话下创建。</para>
     /// <para>请注意，如果进程会话不具备管理员权限，并且条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// 那么 <see cref="RasDisconnectAsync(string?, CancellationToken)"/> 将可能调用成功，且不会执行断开操作。</para>
     /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
@@ -131,7 +131,7 @@ public interface IRasDialer
     /// <summary>
     /// <para>检查条目连接是否在当前进程会话下创建。</para>
     /// <para>请注意，如果进程会话不具备管理员权限，并且如果条目连接不是在当前进程会话创建的（例如，在设置中创建的连接，或自上次连接以来此应用进程有过重启），
-    /// 那么 <see cref="RasDisconnectAsync(string?, string, CancellationToken)"/> 将调用成功，但不会执行断开操作。</para>
+    /// 那么 <see cref="RasDisconnectAsync(string?, CancellationToken)"/> 将可能调用成功，且不会执行断开操作。</para>
     /// <para>请调用 <see cref="GetIsConnectionManagedByCurrentSessionAsync()"/> 或 
     /// <see cref="IsConnectionManagedByCurrentSession(RasConnection)"/> 
     /// 来判断连接是否在当前进程会话下创建，
