@@ -1,4 +1,5 @@
 ﻿using NetSeal.Core.Models;
+using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 
 namespace NetSeal.Core.Services.SystemPowerRegister;
@@ -7,9 +8,13 @@ public static class SystemPowerMonitor
 {
     private static EventLogWatcher? watcher = null;
 
-    private static readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
-    private static DateTime lastUpdateTime = DateTime.MinValue;
-    private static readonly Lock locker = new();
+
+    private static readonly object syncLock = new object();
+    private static CancellationTokenSource? debounceCts;
+    private static PowerMode latestMode = PowerMode.Unknown;
+    private static Task? processTask;
+
+    private static readonly TimeSpan cooldown = TimeSpan.FromSeconds(5);
 
     public static event EventHandler<PowerMode>? PowerModeChanged;
 
@@ -37,35 +42,58 @@ public static class SystemPowerMonitor
 
     private static void Watcher_EventRecordWritten(object? sender, EventRecordWrittenEventArgs e)
     {
-        lock (locker)
-        {
-            var now = DateTime.UtcNow;
-            if (now - lastUpdateTime < cooldown)
-                return;
-
-            lastUpdateTime = now;
-        }
-
         if (e.EventRecord == null)
             return;
 
-        using (e.EventRecord)
+        PowerMode mode = e.EventRecord.Id switch
         {
-            switch (e.EventRecord.Id)
-            {
-                case 42:
-                    PowerModeChanged?.Invoke(sender, PowerMode.Suspend);
-                    break;
-                case 107:
-                    PowerModeChanged?.Invoke(sender, PowerMode.Resume);
-                    break;
-                case 506:
-                    PowerModeChanged?.Invoke(sender, PowerMode.ModernStandby);
-                    break;
-                case 507:
-                    PowerModeChanged?.Invoke(sender, PowerMode.Resume);
-                    break;
-            }
+            42 => PowerMode.Suspend,
+            506 => PowerMode.ModernStandby,
+            107 => PowerMode.ResumeFromSuspend,
+            507 => PowerMode.ResumeFromStandby,
+            _ => PowerMode.Unknown
+        };
+
+        if (mode == PowerMode.Unknown)
+            return;
+
+        CancellationToken token;
+
+        lock (syncLock)
+        {
+            if (mode == latestMode)
+                return;
+
+            latestMode = mode;
+
+            debounceCts?.Cancel();
+            debounceCts?.Dispose();
+
+            debounceCts = new CancellationTokenSource();
+            token = debounceCts.Token;
+        }
+
+        processTask = DebounceAndProcessAsync(mode, token);
+    }
+
+    private static async Task DebounceAndProcessAsync(PowerMode mode, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(cooldown, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        try
+        {
+            PowerModeChanged?.Invoke(null, mode);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"触发 PowerModeChanged 事件时出错: {ex}");
         }
     }
 

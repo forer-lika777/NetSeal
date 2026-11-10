@@ -6,7 +6,9 @@ namespace NetSeal.Core.Models;
 
 public enum PowerMode
 {
-    Resume,
     ModernStandby,
-    Suspend
+    Suspend,
+    ResumeFromSuspend,
+    ResumeFromStandby,
+    Unknown
 }

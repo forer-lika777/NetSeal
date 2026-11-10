@@ -118,6 +118,7 @@ public class Worker : BackgroundService
             if (!shouldConnect)
             {
                 PollInterval = TimeSpan.FromMilliseconds(-1);
+                serviceJustStarted = false;
             }
             else
             {
@@ -194,17 +195,21 @@ public class Worker : BackgroundService
             if (e == PowerMode.Suspend || e == PowerMode.ModernStandby)
             {
                 if (e == PowerMode.Suspend)
-                    logger.LogInformation($"系统已进入挂起状态。");
+                    logger.LogInformation($"系统已进入睡眠状态。");
                 else
-                    logger.LogInformation($"系统已进入待机状态。");
+                    logger.LogInformation($"系统已进入新型待机状态。");
 
                 isSleeping = true;
                 PollInterval = TimeSpan.FromMilliseconds(-1);
                 coreManager.NetworkStatusChanged -= CoreManager_NetworkStatusChanged;
             }
-            else if (e == PowerMode.Resume)
+            else if (e == PowerMode.ResumeFromSuspend || e == PowerMode.ResumeFromStandby)
             {
-                logger.LogInformation("系统已从挂起状态恢复。");
+                if (e == PowerMode.ResumeFromSuspend)
+                    logger.LogInformation($"系统已从睡眠状态恢复。");
+                else
+                    logger.LogInformation($"系统已从新型待机状态恢复。");
+
                 isSleeping = false;
                 resumedFromSleep = true;
                 await Task.Delay(2000);
