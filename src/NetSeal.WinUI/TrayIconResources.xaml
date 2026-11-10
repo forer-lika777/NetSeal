@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:NetSeal.WinUI"
     xmlns:tb="using:H.NotifyIcon">
-    <XamlUICommand x:Key="Command1" Label="Command1" Description="Command1"/>
     <XamlUICommand x:Key="ShowWindowCommand" Label="打开 NetSeal 应用界面" Description="打开 NetSeal 应用界面"/>
     <XamlUICommand x:Key="ExitApplicationCommand" Label="退出 NetSeal" Description="退出 NetSeal"/>
     <tb:TaskbarIcon x:Key="TrayIcon" Visibility="Visible" ToolTipText="ToolTip" 
