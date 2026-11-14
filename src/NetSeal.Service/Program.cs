@@ -59,7 +59,7 @@ if (mock)
 else
 {
 #endif
-    builder.Services.AddSingleton<ICoreManager, CoreManager>();
+    builder.Services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
     builder.Services.AddSingleton<IRasDialer, RasDialer>();
 #if DEBUG
 }

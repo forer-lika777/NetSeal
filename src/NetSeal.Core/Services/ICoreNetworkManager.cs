@@ -2,7 +2,7 @@
 
 namespace NetSeal.Core.Services;
 
-public interface ICoreManager
+public interface ICoreNetworkManager
 {
     public Task<NetworkStatus> GetNetworkStatusAsync();
     public Task ForceRefreshAsync();

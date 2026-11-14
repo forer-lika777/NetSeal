@@ -6,7 +6,7 @@ using System.Net.NetworkInformation;
 
 namespace NetSeal.Core.Services;
 
-public class CoreManager : ICoreManager
+public class CoreNetworkManager : ICoreNetworkManager
 {
     private readonly INetworkService networkService;
     private readonly INetworkAdapterService adapterService;
@@ -20,7 +20,7 @@ public class CoreManager : ICoreManager
 
     public event EventHandler? NetworkStatusChanged;
 
-    public CoreManager(INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
+    public CoreNetworkManager(INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
     {
         this.networkService = networkService;
         this.adapterService = adapterService;
@@ -36,13 +36,21 @@ public class CoreManager : ICoreManager
             lock (locker)
             {
                 var now = DateTime.UtcNow;
-                if (now - lastUpdateTime < cooldown)
-                    return;
-
-                lastUpdateTime = now;
+                try
+                {
+                    if (now - lastUpdateTime < cooldown)
+                        return;
+                }
+                finally
+                {
+                    lastUpdateTime = now;
+                }
             }
 
-            await statusLock.WaitAsync();
+            if (!await statusLock.WaitAsync(TimeSpan.FromSeconds(3)))
+            {
+                return;
+            }
 
             try
             {

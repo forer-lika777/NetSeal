@@ -21,7 +21,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 {
     private readonly INetworkSettings settings;
     private readonly IUiDispatcher dispatcher;
-    private readonly ICoreManager coreManager;
+    private readonly ICoreNetworkManager coreManager;
     private readonly PipeClient pipeClient;
 
     private DateTime lastHandled = DateTime.MinValue;
@@ -36,7 +36,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     public StatusPageModel(
         INetworkSettings appSettings,
         IUiDispatcher dispatcher,
-        ICoreManager coreManager,
+        ICoreNetworkManager coreManager,
         PipeClient pipeClient)
     {
         this.settings = appSettings;

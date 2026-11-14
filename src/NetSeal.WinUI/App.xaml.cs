@@ -68,7 +68,7 @@ public partial class App : Application
         var systemPath = System.IO.Path.Combine(userFolder, "NetSeal", "network_settings.json");
         services.AddKeyedSingleton<ISettingsStore>("client", new LocalSettingsStore(systemPath));
 
-        services.AddSingleton<ICoreManager, CoreManager>();
+        services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
         services.AddSingleton<PipeClient>();
 
         services.AddSingleton<INetworkService, NetworkService>();
@@ -88,7 +88,7 @@ public partial class App : Application
         else
         {
 #endif
-            services.AddSingleton<ICoreManager, CoreManager>();
+            services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
             services.AddSingleton<IRasDialer, RasDialer>();
 #if DEBUG
         }

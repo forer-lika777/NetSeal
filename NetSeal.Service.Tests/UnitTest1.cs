@@ -62,7 +62,7 @@ public class WorkerTests
 
         var mockRasDialer = new Mock<IRasDialer>();
         var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreManager>();
+        var mockCoreManager = new Mock<ICoreNetworkManager>();
         var serviceState = new ServiceState();
 
         var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
@@ -161,7 +161,7 @@ public class WorkerTests
 
         var mockRasDialer = new Mock<IRasDialer>();
         var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreManager>();
+        var mockCoreManager = new Mock<ICoreNetworkManager>();
         var serviceState = new ServiceState();
 
         var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
