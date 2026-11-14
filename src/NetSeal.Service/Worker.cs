@@ -408,6 +408,18 @@ public class Worker : BackgroundService
                 return false;
             }
 
+            if (isNetworkConnectionManagedByOutside)
+            {
+                logger.LogWarning("当前网络由外部管理。");
+                return false;
+            }
+
+            if (isPppoeNetworkManagedByOutside)
+            {
+                logger.LogWarning("当前 PPPoE 网络由外部管理。");
+                return false;
+            }
+
             // 服务刚启动
             if (serviceJustStarted && autoConnect.AutoConnectOnStartup)
             {
@@ -437,18 +449,6 @@ public class Worker : BackgroundService
         if (!isEthernetConnected)
         {
             logger.LogWarning("当前未连接到有线网络。");
-            return false;
-        }
-
-        if (isNetworkConnectionManagedByOutside)
-        {
-            logger.LogWarning("当前网络由外部管理。");
-            return false;
-        }
-
-        if (isPppoeNetworkManagedByOutside)
-        {
-            logger.LogWarning("当前 PPPoE 网络由外部管理。");
             return false;
         }
 
