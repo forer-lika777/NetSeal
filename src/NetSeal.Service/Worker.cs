@@ -90,6 +90,9 @@ public class Worker : BackgroundService
 
     private void CoreNetworkManager_NetworkStatusChanged(object? sender, EventArgs e)
     {
+        if (isSleeping)
+            return;
+
         logger.LogInformation("检测到网络环境变更。");
         serviceState.TriggerReload();
     }
@@ -201,7 +204,6 @@ public class Worker : BackgroundService
 
                 isSleeping = true;
                 PollInterval = TimeSpan.FromMilliseconds(-1);
-                coreManager.NetworkStatusChanged -= CoreNetworkManager_NetworkStatusChanged;
             }
             else if (e == PowerMode.ResumeFromSuspend || e == PowerMode.ResumeFromStandby)
             {
@@ -215,7 +217,6 @@ public class Worker : BackgroundService
                 await Task.Delay(2000);
                 await coreManager.ForceRefreshAsync();
                 serviceState.TriggerReload();
-                coreManager.NetworkStatusChanged += CoreNetworkManager_NetworkStatusChanged;
             }
         }
         catch (Exception ex)
