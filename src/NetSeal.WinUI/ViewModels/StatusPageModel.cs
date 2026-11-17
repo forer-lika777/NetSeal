@@ -386,7 +386,6 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         if (initialized)
             return;
 
-
         IsLoading = true;
 
         await UpdateNetworkStatusAsync();
@@ -425,6 +424,10 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
                 if (item is not null)
                     SelectedNetworkIndex = Networks.IndexOf(item);
+            }
+            else
+            {
+                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
             }
 
             var autoConnect = await settings.AutoConnectPolicy.GetValueAsync();
@@ -480,12 +483,6 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
             ActivePppoeConnectionEntryName = status.ActivePppoeConnectionEntryName;
             IsPppoeConnectionManagedByOutside = status.IsPppoeConnectionManagedByOutside;
             IsNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
-
-            if (SelectedNetwork is null)
-            {
-                ShowDisplayMessage("在网络接口列表中选择要连接的网络。");
-                return;
-            }
 
             if (!HasAvailableNetworks)
             {
