@@ -14,6 +14,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         ShowWindowCommand = command;
         AppWindow.SetIcon("Assets/reimu1.ico");
+        this.AppWindow.Title = "Reimu's NetSeal";
 
         // 获取当前窗口对应的AppWindow实例
         AppWindow appWindow = this.AppWindow;
