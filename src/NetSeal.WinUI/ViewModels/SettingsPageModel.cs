@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
@@ -37,8 +38,17 @@ public partial class SettingsPageModel : ObservableObject
     {
         LightDarkModes mode = (LightDarkModes)newValue;
 
-        if (App.Current.Window?.Content is FrameworkElement rootElement)
-            rootElement.RequestedTheme = (ElementTheme)mode;
+        var window = App.Current.Window;
+
+        if (window is not null)
+        {
+            // ElementTheme 的枚举值：https://learn.microsoft.com/uwp/api/windows.ui.xaml.elementtheme?view=winrt-26100
+            if (window.Content is FrameworkElement rootElement)
+                rootElement.RequestedTheme = (ElementTheme)mode;
+
+            // TitleBarTheme 的枚举值：https://learn.microsoft.com/windows/windows-app-sdk/api/winrt/microsoft.ui.windowing.titlebartheme?view=windows-app-sdk-2.0
+            window.AppWindow.TitleBar.PreferredTheme = (TitleBarTheme)((int)mode + 1);
+        }
 
         await settings.LightDarkMods.SetValueAsync(mode);
     }
