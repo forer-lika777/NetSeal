@@ -4,7 +4,7 @@ using NetSeal.Core.Services.Ras;
 
 namespace NetSeal.Core.Services;
 
-public class MockNetworkStatusManagerService : ICoreManager, IRasDialer
+public class MockNetworkStatusManagerService : ICoreNetworkManager, IRasDialer
 {
     //private bool ethernetConnected = true;
     private bool pppoeConnected = false;

@@ -85,7 +85,7 @@ public partial class App : Application
 
         {
             MockNetworkStatusManagerService service = new MockNetworkStatusManagerService();
-            services.AddSingleton<ICoreManager>(service);
+            services.AddSingleton<ICoreNetworkManager>(service);
             services.AddSingleton<IRasDialer>(service);
         }
         else

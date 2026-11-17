@@ -53,7 +53,7 @@ bool mock = false;
 if (mock)
 {
     MockNetworkStatusManagerService service = new MockNetworkStatusManagerService();
-    builder.Services.AddSingleton<ICoreManager>(service);
+    builder.Services.AddSingleton<ICoreNetworkManager>(service);
     builder.Services.AddSingleton<IRasDialer>(service);
 }
 else
