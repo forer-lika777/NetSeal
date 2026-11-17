@@ -23,8 +23,8 @@ public class CoreNetworkManager : ICoreNetworkManager
     public event EventHandler? NetworkStatusChanged;
 
     public CoreNetworkManager(
-        INetworkService networkService, 
-        INetworkAdapterService adapterService, 
+        INetworkService networkService,
+        INetworkAdapterService adapterService,
         IRasDialer rasDialer,
         ILogger<ICoreNetworkManager> logger)
     {

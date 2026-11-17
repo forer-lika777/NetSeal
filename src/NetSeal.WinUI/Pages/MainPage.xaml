@@ -9,7 +9,7 @@
     mc:Ignorable="d">
 
     <Grid>
-        <Grid x:Name="Background">
+        <Grid x:Name="BackgroundImage">
             <ParallaxView Source="{Binding ElementName=MainFrame, Path=Content}" VerticalShift="200" MaxVerticalShiftRatio="0.2">
                 <Image Source="/Assets/background.jpg" Opacity="0.6" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </ParallaxView>

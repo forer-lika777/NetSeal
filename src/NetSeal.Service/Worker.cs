@@ -2,7 +2,6 @@
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Ras;
-using Serilog.Core;
 using System.ComponentModel;
 
 namespace NetSeal.Service;
@@ -33,7 +32,7 @@ public class Worker : BackgroundService
     private readonly TimeProvider timeProvider;
 
     // 线程同步锁
-    private readonly object lockObject = new();
+    private readonly Lock lockObject = new();
 
     private AutoConnectPolicy autoConnect = new();
     private RasCredentials? rasCredentials = null;

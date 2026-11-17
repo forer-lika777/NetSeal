@@ -82,6 +82,6 @@ public sealed partial class MainPage : Page, IRecipient<ModifyEnableBackground>
 
     public void Receive(ModifyEnableBackground message)
     {
-        Background.Visibility = message.Enabled ? Visibility.Visible : Visibility.Collapsed;
+        BackgroundImage.Visibility = message.Enabled ? Visibility.Visible : Visibility.Collapsed;
     }
 }

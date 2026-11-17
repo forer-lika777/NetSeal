@@ -1,6 +1,5 @@
 ﻿using NetSeal.Core.Models;
 using NetSeal.Core.Services.Ras;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -115,7 +114,7 @@ public class NetworkService : INetworkService
         var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
         var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
 
-        
+
         int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1 /*CLSCTX_INPROC_SERVER*/, ref iid, out IntPtr pUnk);
         if (hr != 0 || pUnk == IntPtr.Zero)
             return result;

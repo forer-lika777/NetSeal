@@ -242,7 +242,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
         SelectedNetwork = Networks[(int)newValue];
         await settings.SelectedNetwork.SetValueAsync(SelectedNetwork);
-        
+
         OnPropertyChanged(nameof(SelectedNetwork));
     }
 
