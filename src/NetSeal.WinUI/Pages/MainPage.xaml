@@ -11,9 +11,8 @@
     <Grid>
         <Grid x:Name="Background">
             <ParallaxView Source="{Binding ElementName=MainFrame, Path=Content}" VerticalShift="200" MaxVerticalShiftRatio="0.2">
-                <Image Source="/Assets/background.jpg" Opacity="1" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Image Source="/Assets/background.jpg" Opacity="0.6" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </ParallaxView>
-            <Rectangle Fill="{ThemeResource ControlOnImageFillColorDefaultBrush}" Opacity="0.7"/>
         </Grid>
         <NavigationView x:Name="NavigationView" IsSettingsVisible="True" 
                         PaneDisplayMode="Auto" ItemInvoked="NavigationView_ItemInvoked" 
