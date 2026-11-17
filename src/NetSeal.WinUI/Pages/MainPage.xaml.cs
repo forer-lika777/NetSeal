@@ -70,15 +70,16 @@ public sealed partial class MainPage : Page
 
         if (tag == "home")
         {
-            MainFrame.Navigate(typeof(HomePage));
+            MainFrame.Navigate(typeof(HomePage), null, new DrillInNavigationTransitionInfo());
         }
         else if (tag == "status")
         {
-            MainFrame.Navigate(typeof(StatusPage));
+            MainFrame.Navigate(typeof(StatusPage), null, new DrillInNavigationTransitionInfo());
         }
         else if (tag == "settings")
         {
-            MainFrame.Navigate(typeof(SettingsPage));
+            MainFrame.Navigate(typeof(SettingsPage), null, new DrillInNavigationTransitionInfo());
+        }
         }
     }
 }
