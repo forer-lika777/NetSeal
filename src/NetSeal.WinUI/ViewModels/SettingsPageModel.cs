@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.UI.Xaml;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
@@ -22,7 +23,11 @@ public partial class SettingsPageModel : ObservableObject
 
     private async Task InitializeAsync()
     {
-        await dispatcher.InvokeAsync(async () => SelectedLightDarkModeIndex = (int)await settings.LightDarkMods.GetValueAsync());
+        await dispatcher.InvokeAsync(async () =>
+        {
+            SelectedLightDarkModeIndex = (int)await settings.LightDarkMods.GetValueAsync();
+            EnableBackground = await settings.EnableBackground.GetValueAsync();
+        });
     }
 
     [ObservableProperty]
@@ -40,4 +45,13 @@ public partial class SettingsPageModel : ObservableObject
 
     [ObservableProperty]
     public partial ObservableCollection<string> LightDarkModeDisplayCollection { get; set; } = ["跟随系统", "浅色模式", "深色模式"];
+
+    [ObservableProperty]
+    public partial bool EnableBackground { get; set; } = true;
+
+    async partial void OnEnableBackgroundChanged(bool oldValue, bool newValue)
+    {
+        StrongReferenceMessenger.Default.Send<ModifyEnableBackground>(new ModifyEnableBackground(newValue));
+        await settings.EnableBackground.SetValueAsync(newValue);
+    }
 }

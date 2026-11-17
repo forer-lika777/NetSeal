@@ -1,10 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using H.NotifyIcon;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using NetSeal.Core.Models;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
@@ -21,6 +23,7 @@ namespace NetSeal.WinUI;
 public partial class App : Application
 {
     public Window? Window { get; set; }
+    public MainPage? MainPage { get; set; }
     private DispatcherQueueTimer? destroyTimer;
     public TaskbarIcon? TrayIcon { get; private set; }
     public bool HandleClosedEvents { get; set; } = true;
@@ -148,10 +151,13 @@ public partial class App : Application
         }
         else
         {
+            MainPage = new MainPage();
             Window = new MainWindow(new RelayCommand(ShowWindow))
             {
-                Content = new MainPage(),
+                Content = MainPage,
             };
+
+            StrongReferenceMessenger.Default.Register<ModifyEnableBackground>(MainPage);
 
             Window.AppWindow.Closing += CloseWindow;
 
@@ -190,15 +196,18 @@ public partial class App : Application
         if (Window is null)
             return;
 
+        if (MainPage is not null)
+            StrongReferenceMessenger.Default.Unregister<ModifyEnableBackground>(MainPage);
+
         Window.AppWindow.Closing -= CloseWindow;
         Window?.Content = null;
         Window?.Close();
+
         if (Window is MainWindow window)
-        {
             window.ShowWindowCommand = null;
-        }
 
         Window = null;
+        MainPage = null;
         destroyTimer = null;
 
         GC.Collect();

@@ -1,10 +1,13 @@
-﻿using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
+using NetSeal.Core.Models;
 using System.Linq;
 
 namespace NetSeal.WinUI.Pages;
 
-public sealed partial class MainPage : Page
+public sealed partial class MainPage : Page, IRecipient<ModifyEnableBackground>
 {
     public string CurrentTag { get; set; } = string.Empty;
 
@@ -16,11 +19,6 @@ public sealed partial class MainPage : Page
         NavigationView.Tag = CurrentTag;
         NavigationView.SelectedItem = NavigationView.MenuItems[0];
         Navigate("home");
-    }
-
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        base.OnNavigatedTo(e);
     }
 
     private void NavigationView_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
@@ -80,6 +78,10 @@ public sealed partial class MainPage : Page
         {
             MainFrame.Navigate(typeof(SettingsPage), null, new DrillInNavigationTransitionInfo());
         }
-        }
+    }
+
+    public void Receive(ModifyEnableBackground message)
+    {
+        Background.Visibility = message.Enabled ? Visibility.Visible : Visibility.Collapsed;
     }
 }
