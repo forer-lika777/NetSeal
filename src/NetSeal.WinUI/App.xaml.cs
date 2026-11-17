@@ -61,6 +61,8 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
+        services.AddLogging();
+
         services.AddSingleton<StatusPageModel>();
         services.AddTransient<CredentialsEnterViewModel>();
         services.AddSingleton<SettingsPageModel>();

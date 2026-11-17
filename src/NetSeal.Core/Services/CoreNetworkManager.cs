@@ -1,4 +1,5 @@
-﻿using NetSeal.Core.Models;
+﻿using Microsoft.Extensions.Logging;
+using NetSeal.Core.Models;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System.Diagnostics;
@@ -8,6 +9,7 @@ namespace NetSeal.Core.Services;
 
 public class CoreNetworkManager : ICoreNetworkManager
 {
+    private readonly ILogger<ICoreNetworkManager> logger;
     private readonly INetworkService networkService;
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
@@ -20,11 +22,16 @@ public class CoreNetworkManager : ICoreNetworkManager
 
     public event EventHandler? NetworkStatusChanged;
 
-    public CoreNetworkManager(INetworkService networkService, INetworkAdapterService adapterService, IRasDialer rasDialer)
+    public CoreNetworkManager(
+        INetworkService networkService, 
+        INetworkAdapterService adapterService, 
+        IRasDialer rasDialer,
+        ILogger<ICoreNetworkManager> logger)
     {
         this.networkService = networkService;
         this.adapterService = adapterService;
         this.rasDialer = rasDialer;
+        this.logger = logger;
         NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
         _ = ForceRefreshAsync();
     }
@@ -33,13 +40,17 @@ public class CoreNetworkManager : ICoreNetworkManager
     {
         try
         {
+            logger.LogDebug("收到网络环境变更事件。");
             lock (locker)
             {
                 var now = DateTime.UtcNow;
                 try
                 {
                     if (now - lastUpdateTime < cooldown)
+                    {
+                        logger.LogDebug("距离上次检查仍在冷却时间内。此线程已退出。");
                         return;
+                    }
                 }
                 finally
                 {

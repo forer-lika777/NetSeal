@@ -198,7 +198,7 @@ public class Worker : BackgroundService
             if (e == PowerMode.Suspend || e == PowerMode.ModernStandby)
             {
                 if (e == PowerMode.Suspend)
-                    logger.LogInformation($"系统已进入睡眠状态。");
+                    logger.LogInformation($"系统已进入睡眠（挂起）状态。");
                 else
                     logger.LogInformation($"系统已进入新型待机状态。");
 
@@ -208,13 +208,12 @@ public class Worker : BackgroundService
             else if (e == PowerMode.ResumeFromSuspend || e == PowerMode.ResumeFromStandby)
             {
                 if (e == PowerMode.ResumeFromSuspend)
-                    logger.LogInformation($"系统已从睡眠状态恢复。");
+                    logger.LogInformation($"系统已从睡眠（挂起）状态恢复。");
                 else
                     logger.LogInformation($"系统已从新型待机状态恢复。");
 
                 isSleeping = false;
                 resumedFromSleep = true;
-                await Task.Delay(2000);
                 await coreManager.ForceRefreshAsync();
                 serviceState.TriggerReload();
             }
@@ -430,7 +429,7 @@ public class Worker : BackgroundService
 
             if (resumedFromSleep && autoConnect.ReconnectOnWake)
             {
-                logger.LogInformation("检测到系统从挂起/低功耗状态恢复，即将尝试自动连接。");
+                logger.LogInformation("系统从挂起/低功耗状态恢复，即将尝试自动连接。");
                 return true;
             }
 

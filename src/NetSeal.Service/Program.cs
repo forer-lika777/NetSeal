@@ -5,6 +5,7 @@ using NetSeal.Core.Services.Ras;
 using NetSeal.Core.Services.SystemPowerRegister;
 using NetSeal.Service;
 using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -23,16 +24,13 @@ Log.Logger = new LoggerConfiguration()
         path: @"C:\ProgramData\NetSeal\logs\.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30)
+    .WriteTo.Console(
+        outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {SourceContext}{NewLine}                   {Message:lj, 20}{NewLine}{Exception}",
+        theme: AnsiConsoleTheme.Code)
     .CreateLogger();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger);
-builder.Logging.AddConsole();
-#if DEBUG
-builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>(null, LogLevel.Debug);
-#else
-builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>(null, LogLevel.Information);
-#endif
 
 builder.Services.AddSingleton<INetworkSettings, NetworkSettings>();
 
@@ -69,13 +67,15 @@ builder.Services.AddSingleton<Worker>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Worker>());
 builder.Services.AddHostedService<PipeServer>();
 builder.Services.AddSingleton<ServiceState>();
+builder.Services.AddSingleton<SystemPowerMonitor>();
 
 var host = builder.Build();
 
+var monitor = host.Services.GetRequiredService<SystemPowerMonitor>();
 var worker = host.Services.GetRequiredService<Worker>();
 
-SystemPowerMonitor.Register();
-SystemPowerMonitor.PowerModeChanged += worker.SystemPowerMonitor_PowerModeChanged;
+monitor.Register();
+monitor.PowerModeChanged += worker.SystemPowerMonitor_PowerModeChanged;
 
 try
 {
@@ -83,6 +83,6 @@ try
 }
 finally
 {
-    SystemPowerMonitor.PowerModeChanged -= worker.SystemPowerMonitor_PowerModeChanged;
-    SystemPowerMonitor.UnRegister();
+    monitor.PowerModeChanged -= worker.SystemPowerMonitor_PowerModeChanged;
+    monitor.UnRegister();
 }
