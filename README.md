@@ -15,12 +15,10 @@ Reimu's NetSeal 的核心功能
 Reimu's NetSeal 的技术栈
 ---
 
-* WinUI 3：基于 Fluent Design 的现代化 Windows 前端桌面应用框架。
-* Windows 服务：实现开机自启动、后台持久化运行。
-* 底层 Windows API / COM 互操作：实现网络状态识别和拨号连接管理功能。
-* C#：项目的所有部分使用 C# 编写，框架版本是 .NET 10。
-
-在 UI 侧，WinUI 框架使用了 Windows SDK 自包含来支持非打包应用的运行；在服务侧，使用 Native AOT 来支持无需依赖 .NET 运行时的运行。
+* Windows App SDK (WinUI 3)：基于 Fluent UI 的现代化 Windows 前端桌面应用框架。在此项目中，NetSeal.WinUI 使用了 Windows SDK 自包含来支持非打包应用的运行。
+* Windows 服务：实现开机自启动、后台持久化运行。在此项目中，NetSeal.Service 使用了 Native AOT 来支持无需依赖 .NET 运行时的运行。
+* Windows API / COM 互操作：实现网络状态识别和拨号连接管理功能。
+* C#：项目的所有部分使用 C# 编写。框架版本是 .NET 10。
 
 平台可用性
 ---
@@ -30,7 +28,7 @@ Reimu's NetSeal 的技术栈
 其他相关信息
 ---
 
-Reimu's NetSeal 项目中，约 7~10％ 的代码使用 AI 辅助生成。
+Reimu's NetSeal 项目中，约 6~8％ 的实际可执行代码由 AI 辅助生成。
 
 另请参阅
 ---
