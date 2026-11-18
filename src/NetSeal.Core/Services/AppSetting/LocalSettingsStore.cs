@@ -51,6 +51,7 @@ public class LocalSettingsStore : ISettingsStore
             {
                 return value;
             }
+
             return null;
         }
         catch (JsonException)
@@ -69,7 +70,7 @@ public class LocalSettingsStore : ISettingsStore
         await semaphore.WaitAsync(ct);
         try
         {
-            Dictionary<string, string> dict = new();
+            Dictionary<string, string> dict = [];
 
             // 1. 先读出旧的配置（防止把别的 key 覆盖掉）
             if (File.Exists(filePath))

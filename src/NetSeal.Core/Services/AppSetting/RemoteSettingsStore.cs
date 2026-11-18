@@ -6,14 +6,7 @@ namespace NetSeal.Core.Services.AppSetting;
 
 public class RemoteSettingsStore : ISettingsStore
 {
-    private readonly PipeClient client;
-
     private static readonly TimeSpan readTimeout = TimeSpan.FromSeconds(2);
-
-    public RemoteSettingsStore(PipeClient client)
-    {
-        this.client = client;
-    }
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)
     {

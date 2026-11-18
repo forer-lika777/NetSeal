@@ -116,7 +116,7 @@ public class PipeServer : BackgroundService
 
                 try
                 {
-                    bytesRead = await serverStream.ReadAsync(lengthBuffer, 0, 4, cts.Token);
+                    bytesRead = await serverStream.ReadAsync(lengthBuffer.AsMemory(0, 4), cts.Token);
                     if (bytesRead == 0)
                     {
                         logger.LogDebug("客户端连接已断开");
@@ -144,8 +144,8 @@ public class PipeServer : BackgroundService
                 byte[] responseBytes = Encoding.UTF8.GetBytes(responseLine);
                 byte[] responseLength = BitConverter.GetBytes(responseBytes.Length);
 
-                await serverStream.WriteAsync(responseLength, 0, 4, stoppingToken);
-                await serverStream.WriteAsync(responseBytes, 0, responseBytes.Length, stoppingToken);
+                await serverStream.WriteAsync(responseLength.AsMemory(0, 4), stoppingToken);
+                await serverStream.WriteAsync(responseBytes, stoppingToken);
                 await serverStream.FlushAsync(stoppingToken);
             }
         }
@@ -156,7 +156,7 @@ public class PipeServer : BackgroundService
     }
 
     // 一个强壮的“读满”辅助方法
-    private async Task<int> ReadExactAsync(Stream stream, byte[] buffer, int count, CancellationToken token)
+    private static async Task<int> ReadExactAsync(Stream stream, byte[] buffer, int count, CancellationToken token)
     {
         int totalRead = 0;
         while (totalRead < count)
@@ -166,6 +166,7 @@ public class PipeServer : BackgroundService
                 break; // 流结束
             totalRead += read;
         }
+
         return totalRead;
     }
 

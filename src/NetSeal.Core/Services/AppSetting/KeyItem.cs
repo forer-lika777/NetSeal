@@ -46,10 +46,8 @@ public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T>
         if (EqualityComparer<T>.Default.Equals(this.value, value))
             return;
 
-        string? raw = GetStringValue(value);
-
-        if (raw == null)
-            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+        string? raw = GetStringValue(value)
+            ?? throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         await settingsStore.SetAsync(Name, raw, ct);
         this.value = value;
@@ -57,10 +55,8 @@ public class KeyItem<T> : KeyItemBase<T>, IKeyItem<T>
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
-        string? raw = GetStringValue(value);
-
-        if (raw == null)
-            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+        string? raw = GetStringValue(value)
+            ?? throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         await settingsStore.SetAsync(Name, raw, ct);
     }
@@ -111,10 +107,8 @@ public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T>
         if (EqualityComparer<T>.Default.Equals(this.value, value))
             return;
 
-        string? raw = GetStringValue(value);
-
-        if (raw == null)
-            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+        string? raw = GetStringValue(value)
+            ?? throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         string encrypted = Encrypt(raw);
         await settingsStore.SetAsync(Name, encrypted, ct);
@@ -123,10 +117,8 @@ public class SecureKeyItem<T> : KeyItemBase<T>, IKeyItem<T>
 
     public async Task SaveAsync(CancellationToken ct = default)
     {
-        string? raw = GetStringValue(value);
-
-        if (raw == null)
-            throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
+        string? raw = GetStringValue(value)
+            ?? throw new NullReferenceException($"无法在未设置配置项的值的情况下进行配置保存操作（配置项 {Name} 的初始值为 null）。");
 
         string encrypted = Encrypt(raw);
 
