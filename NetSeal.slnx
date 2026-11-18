@@ -4,7 +4,9 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/Solution Items/" />
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
   <Project Path="NetSeal.Core.Tests/NetSeal.Core.Tests.csproj" Id="178c35bd-4e8c-4892-b5e0-b4d983f50406" />
   <Project Path="NetSeal.Service.Tests/NetSeal.Service.Tests.csproj" Id="0c618a3e-45e0-4094-9cbf-8574feb417f8" />
   <Project Path="src/NetSeal.Core/NetSeal.Core.csproj" Id="00ebdc3e-c870-4e13-aa1d-654f63656983" />

@@ -5,10 +5,10 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace NetSeal.Core.Services.Network;
 
-public class NetworkService : INetworkService
+public partial class NetworkService : INetworkService
 {
-    [DllImport("ole32.dll", ExactSpelling = true, PreserveSig = true, CharSet = CharSet.Unicode)]
-    private static extern int CoCreateInstance(
+    [LibraryImport("ole32.dll")]
+    private static partial int CoCreateInstance(
         ref Guid rclsid,
         IntPtr pUnkOuter,
         uint dwClsContext,
@@ -24,7 +24,7 @@ public class NetworkService : INetworkService
         this.rasDialer = rasDialer;
     }
 
-    public bool IsEthernetConnected => adapterService.GetActivePhysicalEthernetAdapters().Any();
+    public bool IsEthernetConnected => adapterService.GetActivePhysicalEthernetAdapters().Count != 0;
 
     public async Task<NetworkConnectivityLevel> GetConnectivityLevelAsync()
     {
@@ -77,7 +77,7 @@ public class NetworkService : INetworkService
         });
     }
 
-    private unsafe HashSet<Guid> GetActiveNetworkIds()
+    private static HashSet<Guid> GetActiveNetworkIds()
     {
         return GetAllINetworks()
             .Where(n => n.GetIsConnected())
@@ -113,7 +113,6 @@ public class NetworkService : INetworkService
 
         var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
         var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
-
 
         int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1 /*CLSCTX_INPROC_SERVER*/, ref iid, out IntPtr pUnk);
         if (hr != 0 || pUnk == IntPtr.Zero)
@@ -176,14 +175,14 @@ public class NetworkService : INetworkService
         return result;
     }
 
-    private unsafe Guid GetNetworkId(INetwork network)
+    private static unsafe Guid GetNetworkId(INetwork network)
     {
         Guid id;
         network.GetNetworkId((nint)(&id));
         return id;
     }
 
-    private unsafe Guid GetConnectionAdapterId(INetworkConnection connection)
+    private static Guid GetConnectionAdapterId(INetworkConnection connection)
     {
         return connection.GetAdapterId();
     }
@@ -216,7 +215,6 @@ public class NetworkService : INetworkService
                         CreateObjectFlags.None);
                     result.Add(connection);
                 }
-
             }
             finally
             {

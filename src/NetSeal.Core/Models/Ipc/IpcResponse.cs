@@ -19,7 +19,7 @@ public sealed class IpcResponse
         IpcResponse? resp;
         try
         {
-            resp = JsonSerializer.Deserialize<IpcResponse>(raw);
+            resp = JsonSerializer.Deserialize<IpcResponse>(raw, IpcResponseJsonContext.Default.IpcResponse);
         }
         catch (JsonException ex)
         {

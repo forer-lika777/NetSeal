@@ -11,13 +11,7 @@ public class Worker : BackgroundService
     /// <summary>
     /// 轮询间隔。共享配置与连接状态都在每一轮重新读取，UI 修改后最多一个间隔生效。
     /// </summary>
-    private static TimeSpan PollInterval = TimeSpan.FromSeconds(10);
-
-    /// <summary>
-    /// 单轮实际耗时明显超过此阈值时，视为刚从睡眠/休眠中恢复。
-    /// 服务进程在系统睡眠期间被冻结，唤醒后计时器的跳跃就是这个特征。
-    /// </summary>
-    private static readonly TimeSpan SleepGapThreshold = TimeSpan.FromSeconds(60);
+    private static TimeSpan pollInterval = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// 系统级别（相对用户级别而言）的拨号连接电话簿。
@@ -69,7 +63,7 @@ public class Worker : BackgroundService
     /// </summary>
     private bool lastConnectionSucceeded = false;
 
-    private TaskCompletionSource<IpcResponse>? ConnectInvokedTcs = null;
+    private TaskCompletionSource<IpcResponse>? connectInvokedTcs = null;
 
     public Worker(ILogger<Worker> logger,
         IRasDialer rasDialer,
@@ -104,9 +98,9 @@ public class Worker : BackgroundService
         await Task.Delay(TimeSpan.FromSeconds(3), timeProvider, stoppingToken).ConfigureAwait(false);
 
         logger.LogInformation("正在加载相关配置...");
-        autoConnect = await settings.AutoConnectPolicy.GetValueAsync().ConfigureAwait(false);
-        rasCredentials = await settings.RasCredentials.GetValueAsync().ConfigureAwait(false);
-        selectedNetwork = await settings.SelectedNetwork.GetValueAsync().ConfigureAwait(false);
+        autoConnect = await settings.AutoConnectPolicy.GetValueAsync(stoppingToken).ConfigureAwait(false);
+        rasCredentials = await settings.RasCredentials.GetValueAsync(stoppingToken).ConfigureAwait(false);
+        selectedNetwork = await settings.SelectedNetwork.GetValueAsync(stoppingToken).ConfigureAwait(false);
 
         EnsurePhonebookExists(phoneBookPath);
         await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "").ConfigureAwait(false);
@@ -119,7 +113,7 @@ public class Worker : BackgroundService
 
             if (!shouldConnect)
             {
-                PollInterval = TimeSpan.FromMilliseconds(-1);
+                pollInterval = TimeSpan.FromMilliseconds(-1);
                 serviceJustStarted = false;
             }
             else
@@ -129,7 +123,7 @@ public class Worker : BackgroundService
                 if (!canConnect)
                 {
                     if (connectRequested)
-                        ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail("当前网络不符合连接要求。"));
+                        connectInvokedTcs?.TrySetResult(IpcResponse.Fail("当前网络不符合连接要求。"));
 
                     logger.LogWarning("当前网络不符合连接要求，正在等待下一次检查。");
                     SetPoll(false, true);
@@ -175,12 +169,17 @@ public class Worker : BackgroundService
                 }
             }
 
-            if (PollInterval.Milliseconds != -1)
-                logger.LogDebug("正在等待下次轮询：{Interval} 秒。", PollInterval.TotalSeconds);
+            if (pollInterval.Milliseconds != -1)
+            {
+                if (logger.IsEnabled(LogLevel.Debug))
+                    logger.LogDebug("正在等待下次轮询：{Interval} 秒。", pollInterval.TotalSeconds);
+            }
             else
+            {
                 logger.LogInformation("轮询已暂停。");
+            }
 
-            if (await serviceState.WaitForReloadAsync(PollInterval, stoppingToken).ConfigureAwait(false))
+            if (await serviceState.WaitForReloadAsync(pollInterval, stoppingToken).ConfigureAwait(false))
             {
                 logger.LogInformation("由于触发器提前终止，轮询未完成等待。");
                 connectRetryCount = -1;
@@ -190,7 +189,7 @@ public class Worker : BackgroundService
         logger.LogInformation("NetSeal 服务已停止。");
     }
 
-    public async void SystemPowerMonitor_PowerModeChanged(object? sender, PowerMode e)
+    public async void SystemPowerMonitor_PowerModeChanged(object? _, PowerMode e)
     {
         try
         {
@@ -202,7 +201,7 @@ public class Worker : BackgroundService
                     logger.LogInformation($"系统已进入新型待机状态。");
 
                 isSleeping = true;
-                PollInterval = TimeSpan.FromMilliseconds(-1);
+                pollInterval = TimeSpan.FromMilliseconds(-1);
             }
             else if (e == PowerMode.ResumeFromSuspend || e == PowerMode.ResumeFromStandby)
             {
@@ -230,10 +229,10 @@ public class Worker : BackgroundService
             lastConnectionSucceeded = false;
 
             if (ex != null)
-                logger.LogError(ex, $"拨号连接失败：{ex?.Message}");
+                logger.LogError(ex, "拨号连接失败：{Message}", ex?.Message);
 
             if (ex != null)
-                ConnectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
+                connectInvokedTcs?.TrySetResult(IpcResponse.Fail(ex.Message));
 
             if (doRetry)
             {
@@ -242,29 +241,32 @@ public class Worker : BackgroundService
                     connectRetryCount++;
 
                     if (connectRetryCount == 0)
-                        PollInterval = TimeSpan.FromSeconds(3);
+                        pollInterval = TimeSpan.FromSeconds(3);
                     else if (connectRetryCount >= 1)
-                        PollInterval = PollInterval.Add(TimeSpan.FromSeconds(3));
+                        pollInterval = pollInterval.Add(TimeSpan.FromSeconds(3));
 
-                    logger.LogInformation("连接失败。当前重试次数为：{Count}。将在 {Seconds} 秒后重试。", connectRetryCount, PollInterval.TotalSeconds);
+                    if (logger.IsEnabled(LogLevel.Information))
+                        logger.LogInformation("连接失败。当前重试次数为：{Count}。将在 {Seconds} 秒后重试。", connectRetryCount, pollInterval.TotalSeconds);
                 }
                 else if (connectRetryCount >= connectRetryLimit)
                 {
-                    logger.LogInformation("连接失败。当前已达最大重试限制次数：{Count}。", connectRetryCount);
-                    PollInterval = TimeSpan.FromMilliseconds(-1);
+                    if (logger.IsEnabled(LogLevel.Information))
+                        logger.LogInformation("连接失败。当前已达最大重试限制次数：{Count}。", connectRetryCount);
+
+                    pollInterval = TimeSpan.FromMilliseconds(-1);
                 }
             }
             else
             {
-                PollInterval = TimeSpan.FromMilliseconds(-1);
+                pollInterval = TimeSpan.FromMilliseconds(-1);
             }
         }
         else
         {
             logger.LogInformation("拨号连接成功。");
 
-            ConnectInvokedTcs?.TrySetResult(IpcResponse.Ok());
-            PollInterval = TimeSpan.FromMilliseconds(-1);
+            connectInvokedTcs?.TrySetResult(IpcResponse.Ok());
+            pollInterval = TimeSpan.FromMilliseconds(-1);
             lastConnectionSucceeded = true;
             serviceJustStarted = false;
             resumedFromSleep = false;
@@ -278,7 +280,7 @@ public class Worker : BackgroundService
         connectRequested = true;
         logger.LogInformation("用户请求连接。");
 
-        ConnectInvokedTcs = new TaskCompletionSource<IpcResponse>();
+        connectInvokedTcs = new TaskCompletionSource<IpcResponse>();
 
         connectRetryCount = 0;
 
@@ -286,11 +288,11 @@ public class Worker : BackgroundService
 
         try
         {
-            return await ConnectInvokedTcs.Task.WaitAsync(ct).ConfigureAwait(false);
+            return await connectInvokedTcs.Task.WaitAsync(ct).ConfigureAwait(false);
         }
         finally
         {
-            ConnectInvokedTcs = null;
+            connectInvokedTcs = null;
         }
     }
 
@@ -453,7 +455,7 @@ public class Worker : BackgroundService
 
         if (selectedNetwork is not null && !networks.Any(n => n.Id == selectedNetwork.Id))
         {
-            logger.LogWarning($"当前未连接到匹配网络：{selectedNetwork.ToString()}，已连接的网络项：{string.Join(",", networks.Select(n => n.ToString()))}");
+            logger.LogWarning("当前未连接到匹配网络：{selectedNetwork}，已连接的网络项：{networks}", selectedNetwork, string.Join(",", networks.Select(n => n.ToString())));
             return false;
         }
 

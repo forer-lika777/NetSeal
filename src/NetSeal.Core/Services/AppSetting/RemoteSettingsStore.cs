@@ -8,7 +8,7 @@ public class RemoteSettingsStore : ISettingsStore
 {
     private readonly PipeClient client;
 
-    private static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan readTimeout = TimeSpan.FromSeconds(2);
 
     public RemoteSettingsStore(PipeClient client)
     {
@@ -17,12 +17,12 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task<string?> GetAsync(string name, CancellationToken ct = default)
     {
-        using var timeoutCts = new CancellationTokenSource(ReadTimeout);
+        using var timeoutCts = new CancellationTokenSource(readTimeout);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.GetAppSettingsKeyValue, Name = name });
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.GetAppSettingsKeyValue, Name = name }, IpcRequestJsonContext.Default.IpcRequest);
 
-        string raw = await client.SendCommandAsync(request, cts.Token);
+        string raw = await PipeClient.SendCommandAsync(request, cts.Token);
 
         var resp = IpcResponse.ParseResponse(raw);
         if (!resp.Success)
@@ -33,12 +33,12 @@ public class RemoteSettingsStore : ISettingsStore
 
     public async Task SetAsync(string name, string value, CancellationToken ct = default)
     {
-        using var timeoutCts = new CancellationTokenSource(ReadTimeout);
+        using var timeoutCts = new CancellationTokenSource(readTimeout);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.SetAppSettingsKeyValue, Name = name, Value = value });
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.SetAppSettingsKeyValue, Name = name, Value = value }, IpcRequestJsonContext.Default.IpcRequest);
 
-        string raw = await client.SendCommandAsync(request, cts.Token);
+        string raw = await PipeClient.SendCommandAsync(request, cts.Token);
 
         var resp = IpcResponse.ParseResponse(raw);
         if (!resp.Success)

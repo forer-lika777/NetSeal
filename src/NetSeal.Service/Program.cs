@@ -9,10 +9,7 @@ using Serilog.Sinks.SystemConsole.Themes;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddWindowsService(options =>
-{
-    options.ServiceName = "NetSeal";
-});
+builder.Services.AddWindowsService(options => options.ServiceName = "NetSeal");
 
 Log.Logger = new LoggerConfiguration()
 #if DEBUG

@@ -5,9 +5,11 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace NetSeal.Core.Services.Network;
 
+#pragma warning disable IDE1006 // 命名样式
+
 [GeneratedComInterface]
 [Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B")]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal partial interface INetworkListManager
 {
     void GetTypeInfoCount(nint pctinfo);
@@ -99,7 +101,7 @@ internal partial interface INetworkConnection
 
 [GeneratedComInterface]
 [Guid("DCB00006-570F-4A9B-8D69-199FDBA5723B")]
-[InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal partial interface IEnumNetworkConnections
 {
     void GetTypeInfoCount(nint pctinfo);
@@ -112,7 +114,7 @@ internal partial interface IEnumNetworkConnections
     [PreserveSig]
     int Next(
         uint celt,
-        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IntPtr[] rgelt,
+        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] [Out] IntPtr[] rgelt,
         out uint pceltFetched);
 
     void Skip(uint celt);

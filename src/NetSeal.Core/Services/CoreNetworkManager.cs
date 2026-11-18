@@ -14,7 +14,7 @@ public class CoreNetworkManager : ICoreNetworkManager
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
 
-    private NetworkStatus cachedStatus = new(); // 初始状态
+    private readonly NetworkStatus cachedStatus = new(); // 初始状态
     private readonly SemaphoreSlim statusLock = new(1, 1);
     private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
     private DateTime lastUpdateTime = DateTime.MinValue;

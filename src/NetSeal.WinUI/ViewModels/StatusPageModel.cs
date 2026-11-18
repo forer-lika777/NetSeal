@@ -135,7 +135,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceStatus });
         try
         {
-            await pipeClient.SendCommandAsync(message, ct);
+            await PipeClient.SendCommandAsync(message, ct);
             await dispatcher.InvokeAsync(async () =>
             {
                 ServiceConnected = true;
@@ -658,7 +658,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     private async Task ExcuteConnectAsync()
     {
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect });
-        string raw = await pipeClient.SendCommandAsync(request, connectCts!.Token);
+        string raw = await PipeClient.SendCommandAsync(request, connectCts!.Token);
 
         var response = IpcResponse.ParseResponse(raw);
 
@@ -674,7 +674,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     private async Task ExcuteDisconnectAsync()
     {
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasDisconnect });
-        string raw = await pipeClient.SendCommandAsync(request);
+        string raw = await PipeClient.SendCommandAsync(request);
 
         var response = IpcResponse.ParseResponse(raw);
 
