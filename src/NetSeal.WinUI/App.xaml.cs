@@ -160,6 +160,7 @@ public partial class App : Application
             };
 
             StrongReferenceMessenger.Default.Register<ModifyEnableBackground>(MainPage);
+            StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(true));
 
             Window.AppWindow.Closing += CloseWindow;
 
@@ -179,6 +180,7 @@ public partial class App : Application
 
         windowShow = false;
 
+        StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(false));
         StartDestroyTimer();
     }
 
