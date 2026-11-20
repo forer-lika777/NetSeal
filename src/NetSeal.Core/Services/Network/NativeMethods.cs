@@ -114,7 +114,7 @@ internal partial interface IEnumNetworkConnections
     [PreserveSig]
     int Next(
         uint celt,
-        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] [Out] IntPtr[] rgelt,
+        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)][Out] IntPtr[] rgelt,
         out uint pceltFetched);
 
     void Skip(uint celt);

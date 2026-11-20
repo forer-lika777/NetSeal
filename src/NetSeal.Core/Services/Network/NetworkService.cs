@@ -2,19 +2,13 @@
 using NetSeal.Core.Services.Ras;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+using Windows.Win32;
+using Windows.Win32.System.Com;
 
 namespace NetSeal.Core.Services.Network;
 
 public partial class NetworkService : INetworkService
 {
-    [LibraryImport("ole32.dll")]
-    private static partial int CoCreateInstance(
-        ref Guid rclsid,
-        IntPtr pUnkOuter,
-        uint dwClsContext,
-        ref Guid riid,
-        out IntPtr ppv);
-
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
 
@@ -30,21 +24,19 @@ public partial class NetworkService : INetworkService
     {
         NLM_CONNECTIVITY connectivity = await Task.Run(() =>
         {
-            var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
-            var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
+            Guid clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
+            Guid iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
 
-            // 注意：这里改成 hr < 0
-            int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1, ref iid, out IntPtr pUnk);
-            if (hr < 0 || pUnk == IntPtr.Zero)
-                return NLM_CONNECTIVITY.NLM_CONNECTIVITY_DISCONNECTED;
+            unsafe
+            {
+                int hr = PInvoke.CoCreateInstance(&clsid, null, CLSCTX.CLSCTX_INPROC_SERVER, &iid, out object? pUnkObj);
+                if (hr < 0 || pUnkObj == null)
+                    return NLM_CONNECTIVITY.NLM_CONNECTIVITY_DISCONNECTED;
 
-            // 交给 ComWrappers 接管，千万别手动 Release pUnk
-            var wrappers = new StrategyBasedComWrappers();
-            var networkListManager = (INetworkListManager)wrappers.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.None);
-
-            // 直接调用，不需要 try-finally 去管 pUnk 了
-            networkListManager.GetConnectivity(out NLM_CONNECTIVITY conn);
-            return conn;
+                var networkListManager = (INetworkListManager)pUnkObj;
+                networkListManager.GetConnectivity(out NLM_CONNECTIVITY conn);
+                return conn;
+            }
         });
 
         // === 判断逻辑保持原样 ===
@@ -107,48 +99,40 @@ public partial class NetworkService : INetworkService
     /// 获取系统存储过的所有逻辑网络。
     /// </summary>
     /// <returns></returns>
-    private static List<INetwork> GetAllINetworks()
+    private static unsafe List<INetwork> GetAllINetworks()
     {
         var result = new List<INetwork>();
 
         var clsid = new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B");
         var iid = new Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B");
 
-        int hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1 /*CLSCTX_INPROC_SERVER*/, ref iid, out IntPtr pUnk);
-        if (hr != 0 || pUnk == IntPtr.Zero)
-            return result;
+        int hr = PInvoke.CoCreateInstance(&clsid, null, CLSCTX.CLSCTX_INPROC_SERVER, &iid, out object? pUnkObj);
 
-        var wrappers = new StrategyBasedComWrappers();
-        var networkListManager = (INetworkListManager)wrappers.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.None);
+        if (hr != 0)
+            throw new COMException($"{hr}");
 
-        // 3. 调用我们改好的 out 方法
+        if (pUnkObj == null)
+            throw new COMException(nameof(pUnkObj));
+
+        var networkListManager = (INetworkListManager)pUnkObj;
         networkListManager.GetNetworks(NLM_ENUM_NETWORK.NLM_ENUM_NETWORK_CONNECTED, out IEnumNetworks networks);
 
         if (networks == null)
             return result;
 
-        nint buffer = Marshal.AllocHGlobal(IntPtr.Size);
-        try
-        {
-            uint fetched = 0;
-            while (networks.Next(1, buffer, out fetched) == 0 && fetched == 1)
-            {
-                nint networkPtr = Marshal.ReadIntPtr(buffer);
-                if (networkPtr != IntPtr.Zero)
-                {
-                    var network = (INetwork)wrappers.GetOrCreateObjectForComInstance(networkPtr, CreateObjectFlags.None);
-                    result.Add(network);
+        var wrappers = new StrategyBasedComWrappers();
+        nint* buffer = stackalloc nint[1]; // 栈上分配一个指针的空间
 
-                    Marshal.Release(networkPtr);
-                }
+        uint fetched = 0;
+        while (networks.Next(1, (nint)buffer, out fetched) == 0 && fetched == 1)
+        {
+            nint networkPtr = buffer[0]; // 直接读指针
+            if (networkPtr != IntPtr.Zero)
+            {
+                var network = (INetwork)wrappers.GetOrCreateObjectForComInstance(networkPtr, CreateObjectFlags.None);
+                result.Add(network);
             }
         }
-        finally
-        {
-            Marshal.FreeHGlobal(buffer);
-        }
-
-        Marshal.Release(pUnk);
 
         return result;
     }
@@ -239,7 +223,7 @@ public partial class NetworkService : INetworkService
     /// </summary>
     /// <param name="networks">要过滤的逻辑网络</param>
     /// <returns></returns>
-    private unsafe List<NetworkItem> GetAllActiveEthernetAdapterNetworks(List<INetwork> networks)
+    private List<NetworkItem> GetAllActiveEthernetAdapterNetworks(List<INetwork> networks)
     {
         var physicalIds = new HashSet<Guid>();
         foreach (var ethernet in adapterService.GetActivePhysicalEthernetAdapters())
