@@ -1,4 +1,6 @@
-﻿Reimu's NetSeal
+﻿[English](README.en-US.md) | [简体中文](README.md)
+
+Reimu's NetSeal
 ===
 
 Reimu's NetSeal 是一个自动网络拨号连接的 Windows 桌面应用。
@@ -17,7 +19,7 @@ Reimu's NetSeal 的技术栈
 
 * Windows App SDK (WinUI 3)：基于 Fluent UI 的现代化 Windows 前端桌面应用框架。在此项目中，NetSeal.WinUI 使用了 Windows SDK 自包含来支持非打包应用的运行。
 * Windows 服务：实现开机自启动、后台持久化运行。在此项目中，NetSeal.Service 使用了 Native AOT 来支持无需依赖 .NET 运行时的运行。
-* Windows API / COM 互操作：实现网络状态识别和拨号连接管理功能。
+* Windows API / COM 互操作：实现网络状态识别和拨号连接管理功能。在此项目中，NetSeal.Core 使用了 CsWin32 PInvoke 源生成器来实现 Windows API 的调用。
 * C#：项目的所有部分使用 C# 编写。框架版本是 .NET 10。
 
 平台可用性
@@ -33,8 +35,6 @@ Reimu's NetSeal 项目中，约 6~8％ 的实际可执行代码由 AI 辅助生�
 另请参阅
 ---
 
-上古老坟 -> https://learn.microsoft.com/windows/win32/api/ras/
-
-WinUI 3 -> https://learn.microsoft.com/windows/apps/winui/winui3/
-
-Windows 中的新式待机 -> https://learn.microsoft.com/windows-hardware/design/device-experiences/networking-power-management-for-modern-standby-platforms
+* 上古老坟 -> [Ras.h 标头 - Win32 应用 | Microsoft Learn](https://learn.microsoft.com/windows/win32/api/ras/)
+* WinUI 3 -> [WinUI 3 - Windows 应用开发 | Microsoft Learn](https://learn.microsoft.com/windows/apps/winui/winui3/)
+* Windows 中的新式待机 -> [新式待机平台的网络电源管理 | Microsoft Learn](https://learn.microsoft.com/windows-hardware/design/device-experiences/networking-power-management-for-modern-standby-platforms)
