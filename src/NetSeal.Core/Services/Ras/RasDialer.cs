@@ -332,7 +332,7 @@ public partial class RasDialer : IRasDialer
     {
         await Task.Run(() =>
         {
-            Connect(null, entryName, username, password, out IntPtr handle);
+            Connect(phoneBook, entryName, username, password, out IntPtr handle);
             currentConnectionHandle = handle;
         }, cancellationToken);
     }
