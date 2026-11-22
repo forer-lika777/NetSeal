@@ -17,17 +17,16 @@ Reimu's NetSeal is an experimental project, and is currently still in the develo
 * **Windows App SDK (WinUI 3)**: A modern Windows desktop application framework based on Fluent UI. In this project, NetSeal.WinUI uses Windows SDK self-contained to support running in unpackaged mode.
 * **Windows Service**: Enables auto-start at boot and persistent background operation. In this project, NetSeal.Service enables Native AOT compilation to run without requiring the .NET Runtime.
 * **Windows API / COM Interop**: Used for network state recognition and dial-up connection management. In this project, NetSeal.Core uses CsWin32 P/Invoke source generator to call the Windows API.
-* **C#**: The entire project is written in C#. Its framework version is .NET 10.
+* **C#**: The project is written in C#. Its framework version is .NET 10.
 
-## Comparing to regular Task Scheduler, what advantages does Reimu's NetSeal have?
+## Comparing to the Task Scheduler, what advantages does Reimu's NetSeal have?
 
 * **Friendly user interface.** The app is ready to use right after installation; advanced connection operations can be managed from a convenient UI window, with no need to set up a cumbersome Task Scheduler.
-
 * **Highly controllable state-transition behavior.** For various specific situations, the service is highly controllable, with targeted code logic that can handle a wide range of complex environments.
 
-  Windows 10 introduced Modern Standby (S0). Unlike traditional sleep (S3), the CPU keeps running during Modern Standby, allowing the system to wake more quickly. Modern Standby usually occurs on laptops when the screen turns off or the lid is closed—even, although these actions are designated as "Sleep" in the settings.
+  Since Windows 10, Windows has introduced Modern Standby (S0). Different from traditional sleep (S3), the CPU keeps running during Modern Standby, allowing the system to wake more quickly. Modern Standby (S0) usually occurs on laptops when the screen turns off or the lid is closed—although these actions are designated as "Sleep" in the settings, as it does not refer to the tranditional sleep (S3).
 
-  Ethernet will be diabled during modern standby. For a PPPoE dial-up service, Ethernet being disabled means the connection is dropped. The service needs to stay silent during sleep and Modern Standby, and on wake, check the network state and perform the connection. However, to do this, many problems will arise:
+  Ethernet will be diabled during modern standby. For a PPPoE connection, it means that the connection needs to be dropped. The service needs to stay silent during sleep and Modern Standby, and on wake, check the network state and perform the connection. However, to do this, many problems will arise:
 
   1. **Subscribing to traditional sleep events does not receive Modern Standby state-transition events.** The service needs to both register for sleep messages and Windows log messages and listen for Modern Standby state-transition events.
 
