@@ -154,5 +154,15 @@ public class MockNetworkStatusManagerService : ICoreNetworkManager, IRasDialer
     {
         throw new NotImplementedException();
     }
+
+    public void Register()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Unregister()
+    {
+        throw new NotImplementedException();
+    }
 }
 #endif

@@ -5,12 +5,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-NetSeal.Service-37895c60-5f5f-4406-a403-d254adeeae2c</UserSecretsId>
+	  
+	<PublishTrimmed>true</PublishTrimmed>
 	<PublishAot>true</PublishAot>
 	<IsAotCompatible>true</IsAotCompatible>
 	<VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
 	<IsTrimmable>true</IsTrimmable>
 	<EnableAotAnalyzer>true</EnableAotAnalyzer>
 	<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+
+	  <Platforms>x64</Platforms>
+	  <PlatformTarget>x64</PlatformTarget>
+	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>

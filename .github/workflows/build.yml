@@ -1,0 +1,63 @@
+﻿name: Build and Package
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore NetSeal.slnx
+
+    - name: Publish Service
+      run: >
+        dotnet publish src/NetSeal.Service/NetSeal.Service.csproj 
+        -c Release -r win-x64
+        -o publish/Service
+
+    - name: Publish WinUI
+      run: >
+        dotnet publish src/NetSeal.WinUI/NetSeal.WinUI.csproj 
+        -c Release -r win-x64 -p:Platform=x64
+        -o publish/WinUI
+
+    - name: Ensure NetSeal.WinUI.pri exists
+      shell: pwsh
+      run: |
+        $priFile = "publish/WinUI/NetSeal.WinUI.pri"
+        if (-not (Test-Path $priFile)) {
+          Write-Host "::warning::NetSeal.WinUI.pri missing in publish, searching obj folder..."
+          $found = Get-ChildItem -Path "src/NetSeal.WinUI" -Filter "*.pri" -Recurse | Select-Object -First 1
+          if ($found) {
+            Copy-Item $found.FullName -Destination $priFile
+            Write-Host "Successfully copied $($found.Name) to publish/WinUI/"
+          } else {
+            Write-Host "::error::Cannot find .pri anywhere!"
+            exit 1
+          }
+        }
+
+    - name: Install Inno Setup
+      run: choco install innosetup -y
+
+    - name: Build Installer
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "src\NetSeal.InnoSetup\scripts.iss"
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: NetSeal-Installer
+        path: dist/*.exe
