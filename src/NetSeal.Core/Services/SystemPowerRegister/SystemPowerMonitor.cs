@@ -15,6 +15,7 @@ public partial class SystemPowerMonitor
 
     private readonly Lock syncLock = new Lock();
     private CancellationTokenSource? debounceCts = null;
+    // 服务初始化时系统一定处于非待机状态
     private PowerMode latestMode = PowerMode.ResumeFromStandby;
 
     private readonly TimeSpan cooldown = TimeSpan.FromSeconds(1);
@@ -114,6 +115,9 @@ public partial class SystemPowerMonitor
         return 0;
     }
 
+    // 此处不使用 CsWin32 生成器的原因是，CsWin32 生成的签名是针对窗口应用程序设计的
+    // 生成的针对服务程序的签名需要管理指针，手动引入相对而言更加方便
+
     /// <summary>
     /// <b><see href="https://learn.microsoft.com/zh-cn/windows/win32/api/powerbase/nf-powerbase-powerregistersuspendresumenotification">PowerRegisterSuspendResumeNotification</see></b> 函数注册以在系统暂停或恢复时接收通知。
     /// </summary>
@@ -177,6 +181,7 @@ public partial class SystemPowerMonitor
 
     private void Invoke(PowerMode mode)
     {
+        // 阅读项目文档以了解为何需要在此处设计复杂的针对性防抖逻辑
         CancellationToken token;
 
         lock (syncLock)

@@ -11,7 +11,7 @@ public class Worker : BackgroundService
     /// <summary>
     /// 轮询间隔。共享配置与连接状态都在每一轮重新读取，UI 修改后最多一个间隔生效。
     /// </summary>
-    private static TimeSpan pollInterval = TimeSpan.FromSeconds(10);
+    private TimeSpan pollInterval = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// 系统级别（相对用户级别而言）的拨号连接电话簿。
@@ -57,6 +57,8 @@ public class Worker : BackgroundService
     private bool disconnectRequested = false;
 
     private bool connectRequested = false;
+
+    private bool hasTriedDetectedConnect = false;
 
     /// <summary>
     /// 跟踪上一次连接是否成功，用于判断是否发生了意外断连。
@@ -105,6 +107,8 @@ public class Worker : BackgroundService
         EnsurePhonebookExists(phoneBookPath);
         await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "").ConfigureAwait(false);
 
+        coreManager.Register();
+
         while (!stoppingToken.IsCancellationRequested)
         {
             await UpdateNetworkStatusAsync();
@@ -145,6 +149,8 @@ public class Worker : BackgroundService
                             stoppingToken);
 
                         SetPoll(true, false);
+
+                        _ = WaitAndManuallyComfirmNetworkStatusAsync();
                     }
                     catch (OperationCanceledException)
                     {
@@ -189,6 +195,89 @@ public class Worker : BackgroundService
         logger.LogInformation("NetSeal 服务已停止。");
     }
 
+    private bool GetShouldConnect()
+    {
+        lock (lockObject)
+        {
+            if (connectRequested)
+            {
+                connectRequested = false;
+                return true;
+            }
+
+            if (isSleeping)
+            {
+                logger.LogWarning("Windows 正在睡觉，请不要打扰他。");
+                return false;
+            }
+
+            // 已经连接 PPPoE 网络
+            if (isPppoeNetworkConnected)
+            {
+                logger.LogInformation("当前已连接到 PPPoE 网络，不需要进行连接。");
+                return false;
+            }
+
+            if (isNetworkConnectionManagedByOutside)
+            {
+                logger.LogWarning("当前网络由外部管理。");
+                return false;
+            }
+
+            if (isPppoeNetworkManagedByOutside)
+            {
+                logger.LogWarning("当前 PPPoE 网络由外部管理。");
+                return false;
+            }
+
+            // 服务刚启动
+            if (serviceJustStarted && autoConnect.AutoConnectOnStartup)
+            {
+                logger.LogInformation("服务初启动，即将进行拨号连接。");
+                return true;
+            }
+
+            if (resumedFromSleep && autoConnect.ReconnectOnWake)
+            {
+                logger.LogInformation("系统从挂起/低功耗状态恢复，即将尝试自动连接。");
+                return true;
+            }
+
+            // 检测到意外的断连（连接曾经成功过，但现在断开了）
+            if (!disconnectRequested && lastConnectionSucceeded && !isPppoeNetworkConnected && autoConnect.ReconnectOnDisconnect)
+            {
+                logger.LogWarning("检测到意外的断连。正在尝试重新连接...");
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private bool GetCanConnect()
+    {
+        if (!isEthernetConnected)
+        {
+            logger.LogWarning("当前未连接到有线网络。");
+            return false;
+        }
+
+        if (selectedNetwork is not null && !networks.Any(n => n.Id == selectedNetwork.Id))
+        {
+            logger.LogWarning("当前未连接到匹配网络：{selectedNetwork}，已连接的网络项：{networks}", selectedNetwork, string.Join(",", networks.Select(n => n.ToString())));
+
+            if (!hasTriedDetectedConnect)
+            {
+                logger.LogInformation("尝试探测性连接（这是为了避免可能存在的网络识别过程中产生的延迟）...");
+                return true;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
     public async void SystemPowerMonitor_PowerModeChanged(object? _, PowerMode e)
     {
         try
@@ -200,6 +289,7 @@ public class Worker : BackgroundService
                 else
                     logger.LogInformation($"系统已进入新型待机状态。");
 
+                coreManager.Unregister();
                 isSleeping = true;
                 pollInterval = TimeSpan.FromMilliseconds(-1);
             }
@@ -213,6 +303,7 @@ public class Worker : BackgroundService
                 isSleeping = false;
                 resumedFromSleep = true;
                 await coreManager.ForceRefreshAsync();
+                coreManager.Register();
                 serviceState.TriggerReload();
             }
         }
@@ -227,6 +318,7 @@ public class Worker : BackgroundService
         if (!success)
         {
             lastConnectionSucceeded = false;
+            hasTriedDetectedConnect = true;
 
             if (ex != null)
                 logger.LogError(ex, "拨号连接失败：{Message}", ex?.Message);
@@ -242,8 +334,6 @@ public class Worker : BackgroundService
 
                     if (connectRetryCount == 0)
                         pollInterval = TimeSpan.FromSeconds(3);
-                    else if (connectRetryCount >= 1)
-                        pollInterval = pollInterval.Add(TimeSpan.FromSeconds(3));
 
                     if (logger.IsEnabled(LogLevel.Information))
                         logger.LogInformation("连接失败。当前重试次数为：{Count}。将在 {Seconds} 秒后重试。", connectRetryCount, pollInterval.TotalSeconds);
@@ -266,18 +356,44 @@ public class Worker : BackgroundService
             logger.LogInformation("拨号连接成功。");
 
             connectInvokedTcs?.TrySetResult(IpcResponse.Ok());
+
             pollInterval = TimeSpan.FromMilliseconds(-1);
-            lastConnectionSucceeded = true;
+
             serviceJustStarted = false;
             resumedFromSleep = false;
+
+            lastConnectionSucceeded = true;
+            hasTriedDetectedConnect = false;
+
             connectRetryCount = -1;
         }
     }
 
+    private async Task WaitAndManuallyComfirmNetworkStatusAsync()
+    {
+        // 拨号连接成功后，会触发多个网络变更事件（测试统计为 3 次）。
+        // 此处临时屏蔽网络变更事件，并在 10 秒后手动触发检查。
+        coreManager.Unregister();
+
+        logger.LogDebug("已取消网络变更事件订阅，并于 10 秒后检查确保网络状态并重新订阅。");
+
+        await Task.Delay(10000);
+
+        await coreManager.ForceRefreshAsync();
+
+        coreManager.Register();
+
+        serviceState.TriggerReload();
+    }
+
     public async Task<IpcResponse> ConnectRequest(CancellationToken ct = default)
     {
-        disconnectRequested = false;
-        connectRequested = true;
+        lock (lockObject)
+        {
+            disconnectRequested = false;
+            connectRequested = true;
+        }
+        
         logger.LogInformation("用户请求连接。");
 
         connectInvokedTcs = new TaskCompletionSource<IpcResponse>();
@@ -368,7 +484,6 @@ public class Worker : BackgroundService
     {
         try
         {
-            logger.LogInformation("正在更新网络状态...");
             var status = await coreManager.GetNetworkStatusAsync();
             lock (lockObject)
             {
@@ -386,106 +501,25 @@ public class Worker : BackgroundService
         }
     }
 
-    private bool GetShouldConnect()
-    {
-        lock (lockObject)
-        {
-            if (connectRequested)
-            {
-                connectRequested = false;
-                return true;
-            }
-
-            if (isSleeping)
-            {
-                logger.LogWarning("Windows 正在睡觉，请不要打扰他。");
-                return false;
-            }
-
-            // 已经连接 PPPoE 网络
-            if (isPppoeNetworkConnected)
-            {
-                logger.LogInformation("当前已连接到 PPPoE 网络，不需要进行连接。");
-                return false;
-            }
-
-            if (isNetworkConnectionManagedByOutside)
-            {
-                logger.LogWarning("当前网络由外部管理。");
-                return false;
-            }
-
-            if (isPppoeNetworkManagedByOutside)
-            {
-                logger.LogWarning("当前 PPPoE 网络由外部管理。");
-                return false;
-            }
-
-            // 服务刚启动
-            if (serviceJustStarted && autoConnect.AutoConnectOnStartup)
-            {
-                logger.LogInformation("服务初启动，即将进行拨号连接。");
-                return true;
-            }
-
-            if (resumedFromSleep && autoConnect.ReconnectOnWake)
-            {
-                logger.LogInformation("系统从挂起/低功耗状态恢复，即将尝试自动连接。");
-                return true;
-            }
-
-            // 检测到意外的断连（连接曾经成功过，但现在断开了）
-            if (!disconnectRequested && lastConnectionSucceeded && !isPppoeNetworkConnected && autoConnect.ReconnectOnDisconnect)
-            {
-                logger.LogWarning("检测到意外的断连。正在尝试重新连接...");
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    private bool GetCanConnect()
-    {
-        if (!isEthernetConnected)
-        {
-            logger.LogWarning("当前未连接到有线网络。");
-            return false;
-        }
-
-        if (selectedNetwork is not null && !networks.Any(n => n.Id == selectedNetwork.Id))
-        {
-            logger.LogWarning("当前未连接到匹配网络：{selectedNetwork}，已连接的网络项：{networks}", selectedNetwork, string.Join(",", networks.Select(n => n.ToString())));
-            return false;
-        }
-
-        return true;
-    }
-
     public void EnsurePhonebookExists(string phonebookPath)
     {
-        // 1. 获取文件所在目录
         string? directory = Path.GetDirectoryName(phonebookPath);
 
         try
         {
-            // 2. 如果目录不存在，创建目录
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
-            // 3. 如果 PBK 文件不存在，创建一个空的（系统会接管它）
             if (!File.Exists(phonebookPath))
-            {
-                // 写入一个极其基础的 PBK 头部，或者直接建个空文件
-                // 当 RasSetEntryProperties 调用时，系统会自动往里补全格式
                 File.WriteAllText(phonebookPath, "");
-            }
         }
         catch (UnauthorizedAccessException ex)
         {
             logger.LogError(ex, "写入文件受拒绝。当前进程不具备访问系统电话簿权限，请检查权限设置。");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "写入文件时失败。");
         }
     }
 }

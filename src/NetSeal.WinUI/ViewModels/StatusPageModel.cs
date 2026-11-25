@@ -45,6 +45,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         this.pipeClient = pipeClient;
         _ = InitializeAsync();
         coreManager.NetworkStatusChanged += CoreManager_NetworkStatusChanged;
+        coreManager.Register();
         StrongReferenceMessenger.Default.Register<KeepRefreshingStatusMessage>(this);
         StrongReferenceMessenger.Default.Register<ModifyCredentialsMessage>(this);
     }

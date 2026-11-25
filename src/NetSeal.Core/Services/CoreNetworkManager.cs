@@ -20,6 +20,8 @@ public class CoreNetworkManager : ICoreNetworkManager
     private DateTime lastUpdateTime = DateTime.MinValue;
     private readonly Lock locker = new();
 
+    private bool registered = false;
+
     public event EventHandler? NetworkStatusChanged;
 
     public CoreNetworkManager(
@@ -32,7 +34,6 @@ public class CoreNetworkManager : ICoreNetworkManager
         this.adapterService = adapterService;
         this.rasDialer = rasDialer;
         this.logger = logger;
-        NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
         _ = ForceRefreshAsync();
     }
 
@@ -65,6 +66,7 @@ public class CoreNetworkManager : ICoreNetworkManager
 
             try
             {
+                logger.LogInformation("正在更新网络状态...");
                 await UpdateNetworkConnectionStatusAsync(cachedStatus);
                 await UpdatePppoeConnectionStatusAsync(cachedStatus);
                 NetworkStatusChanged?.Invoke(sender, EventArgs.Empty);
@@ -76,15 +78,21 @@ public class CoreNetworkManager : ICoreNetworkManager
         }
         catch (Exception ex)
         {
-            Debug.WriteLine(ex, "网络状态更新失败");
+            logger.LogError(ex, "网络状态更新失败");
         }
     }
 
+    /// <summary>
+    /// 强制更新网络状态。此函数入口在更新后不会触发 <see cref="NetworkStatusChanged"/> 事件通知。
+    /// </summary>
+    /// <returns></returns>
     public async Task ForceRefreshAsync()
     {
         await statusLock.WaitAsync();
+
         try
         {
+            logger.LogInformation("正在更新网络状态（外部强制更新）...");
             await UpdateNetworkConnectionStatusAsync(cachedStatus);
             await UpdatePppoeConnectionStatusAsync(cachedStatus);
         }
@@ -105,6 +113,23 @@ public class CoreNetworkManager : ICoreNetworkManager
         finally
         {
             statusLock.Release();
+        }
+    }
+
+    public void Register()
+    {
+        if (!registered)
+        {
+            NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
+            registered = true;
+        }
+    }
+    public void Unregister()
+    {
+        if (registered)
+        {
+            NetworkChange.NetworkAddressChanged -= NetworkChange_NetworkAddressChanged;
+            registered = false;
         }
     }
 
