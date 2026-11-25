@@ -133,7 +133,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
     private async Task CheckServiceStatusAsync(CancellationToken ct)
     {
-        var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceStatus });
+        var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceStatus }, IpcRequestJsonContext.Default.IpcRequest);
         try
         {
             await PipeClient.SendCommandAsync(message, ct);
@@ -202,10 +202,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     [ObservableProperty]
     public partial int SelectedNetworkIndex { get; set; } = -1;
 
-    public bool CanModifySelectedNetworkIndex
-    {
-        get => ServiceConnected && !IsLoading && !IsSavingSelectedNetworkIndex;
-    }
+    public bool CanModifySelectedNetworkIndex => ServiceConnected && !IsLoading && !IsSavingSelectedNetworkIndex;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanModifySelectedNetworkIndex))]
@@ -271,10 +268,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     [ObservableProperty]
     public partial bool AutoConnectOnStartup { get; set; } = false;
 
-    public bool CanModifyAutoConnectOnStartup
-    {
-        get => ServiceConnected && !IsLoading && !IsSavingAutoConnectOnStartup;
-    }
+    public bool CanModifyAutoConnectOnStartup => ServiceConnected && !IsLoading && !IsSavingAutoConnectOnStartup;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanModifyAutoConnectOnStartup))]
@@ -307,10 +301,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     [ObservableProperty]
     public partial bool ReconnectOnWake { get; set; } = false;
 
-    public bool CanModifyReconnectOnWake
-    {
-        get => ServiceConnected && !IsLoading && !IsSavingReconnectOnWake;
-    }
+    public bool CanModifyReconnectOnWake => ServiceConnected && !IsLoading && !IsSavingReconnectOnWake;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnWake))]
@@ -343,10 +334,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     [ObservableProperty]
     public partial bool ReconnectOnDisconnect { get; set; } = false;
 
-    public bool CanModifyReconnectOnDisconnect
-    {
-        get => ServiceConnected && !IsLoading && !IsSavingReconnectOnDisconnect;
-    }
+    public bool CanModifyReconnectOnDisconnect => ServiceConnected && !IsLoading && !IsSavingReconnectOnDisconnect;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanModifyReconnectOnDisconnect))]
@@ -493,10 +481,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         });
     }
 
-    public bool CanModifyCredentials
-    {
-        get => ServiceConnected && !IsLoading;
-    }
+    public bool CanModifyCredentials => ServiceConnected && !IsLoading;
 
     private bool CanConnect()
     {
@@ -658,7 +643,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
     private async Task ExcuteConnectAsync()
     {
-        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect });
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect }, IpcRequestJsonContext.Default.IpcRequest);
         string raw = await PipeClient.SendCommandAsync(request, connectCts!.Token);
 
         var response = IpcResponse.ParseResponse(raw);
@@ -672,9 +657,9 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         await Task.Delay(500);
     }
 
-    private async Task ExcuteDisconnectAsync()
+    private static async Task ExcuteDisconnectAsync()
     {
-        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasDisconnect });
+        string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasDisconnect }, IpcRequestJsonContext.Default.IpcRequest);
         string raw = await PipeClient.SendCommandAsync(request);
 
         var response = IpcResponse.ParseResponse(raw);

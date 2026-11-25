@@ -6,6 +6,7 @@ using NetSeal.Core.Models;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.WinUI.Services;
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace NetSeal.WinUI.ViewModels;
@@ -30,6 +31,13 @@ public partial class SettingsPageModel : ObservableObject
             EnableBackground = await settings.EnableBackground.GetValueAsync();
         });
     }
+
+    public string AppVersion { get; } = GetVersion();
+
+    private static string GetVersion() => 
+        typeof(SettingsPageModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion.Split('+')[0] ?? "未知";
 
     [ObservableProperty]
     public partial int SelectedLightDarkModeIndex { get; set; } = 0;

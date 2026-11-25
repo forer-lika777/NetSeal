@@ -6,6 +6,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.Windows.Globalization;
 using NetSeal.Core.Models;
 using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
@@ -50,6 +51,7 @@ public partial class App : Application
     /// </summary>
     public App()
     {
+        ApplicationLanguages.PrimaryLanguageOverride = "zh-CN";
         InitializeComponent();
         Services = ConfigureServices();
     }
