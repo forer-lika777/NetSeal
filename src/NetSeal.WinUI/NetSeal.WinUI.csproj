@@ -15,6 +15,7 @@
 	<WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>true</WindowsAppSDKBootstrapAutoInitializeOptions_OnNoMatch_ShowUI>
     <EnableMsixTooling>false</EnableMsixTooling>
     <Nullable>enable</Nullable>
+	<SelfContained>true</SelfContained>
 
 	<NoWarn>MSB3277</NoWarn>
 	  
