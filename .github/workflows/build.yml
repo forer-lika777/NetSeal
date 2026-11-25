@@ -52,6 +52,13 @@ jobs:
     - name: Install Inno Setup
       run: choco install innosetup -y
 
+    - name: Install Chinese Language Pack
+      shell: pwsh
+      run: |
+        $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+        $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl"
+        Invoke-WebRequest -Uri $url -OutFile "$langDir\ChineseSimplified.isl"
+
     - name: Build Installer
       run: |
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "src\NetSeal.InnoSetup\scripts.iss"
