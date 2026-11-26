@@ -1,6 +1,6 @@
 ﻿using NetSeal.Core.Models;
-using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
+using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System.ComponentModel;
 
@@ -21,7 +21,7 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> logger;
     private readonly IRasDialer rasDialer;
     private readonly INetworkSettings settings;
-    private readonly ICoreNetworkManager coreManager;
+    private readonly INetworkStateMonitor coreManager;
     private readonly ServiceState serviceState;
     private readonly TimeProvider timeProvider;
 
@@ -70,7 +70,7 @@ public class Worker : BackgroundService
     public Worker(ILogger<Worker> logger,
         IRasDialer rasDialer,
         INetworkSettings settings,
-        ICoreNetworkManager coreManager,
+        INetworkStateMonitor coreManager,
         ServiceState serviceState,
         TimeProvider timeProvider)
     {
@@ -80,10 +80,10 @@ public class Worker : BackgroundService
         this.coreManager = coreManager;
         this.serviceState = serviceState;
         this.timeProvider = timeProvider;
-        coreManager.NetworkStatusChanged += CoreNetworkManager_NetworkStatusChanged;
+        coreManager.NetworkStateChanged += CoreNetworkManager_NetworkStateChanged;
     }
 
-    private void CoreNetworkManager_NetworkStatusChanged(object? sender, EventArgs e)
+    private void CoreNetworkManager_NetworkStateChanged(object? sender, EventArgs e)
     {
         if (isSleeping)
             return;
@@ -110,7 +110,7 @@ public class Worker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await UpdateNetworkStatusAsync();
+            await UpdateNetworkStateAsync();
 
             bool shouldConnect = GetShouldConnect();
 
@@ -149,7 +149,7 @@ public class Worker : BackgroundService
 
                         SetPoll(true, false);
 
-                        _ = WaitAndManuallyComfirmNetworkStatusAsync();
+                        _ = WaitAndManuallyComfirmNetworkStateAsync();
                     }
                     catch (OperationCanceledException)
                     {
@@ -370,7 +370,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task WaitAndManuallyComfirmNetworkStatusAsync()
+    private async Task WaitAndManuallyComfirmNetworkStateAsync()
     {
         // 拨号连接成功后，会触发多个网络变更事件（测试统计为 3 次）。
         // 此处临时屏蔽网络变更事件，并在 10 秒后手动触发检查。
@@ -481,20 +481,20 @@ public class Worker : BackgroundService
         serviceState.TriggerReload();
     }
 
-    public async Task UpdateNetworkStatusAsync()
+    public async Task UpdateNetworkStateAsync()
     {
         try
         {
             logger.LogInformation("正在检查网络状态...");
-            var status = await coreManager.GetNetworkStatusAsync();
+            var state = await coreManager.GetNetworkStateAsync();
             lock (lockObject)
             {
-                isEthernetConnected = status.IsEthernetConnected;
-                isPppoeNetworkConnected = status.IsPppoeNetworkConnected;
-                isNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
-                isPppoeNetworkManagedByOutside = status.IsPppoeConnectionManagedByOutside;
-                isNetworkConnectionManagedByOutside = status.IsNetworkConnectionManagedByOutside;
-                networks = status.ActiveEthernetNetworks;
+                isEthernetConnected = state.IsEthernetConnected;
+                isPppoeNetworkConnected = state.IsPppoeNetworkConnected;
+                isNotPppoeNetworkConnection = state.IsNotPppoeNetworkConnection;
+                isPppoeNetworkManagedByOutside = state.IsPppoeConnectionManagedByOutside;
+                isNetworkConnectionManagedByOutside = state.IsNetworkConnectionManagedByOutside;
+                networks = state.ActiveEthernetNetworks;
             }
         }
         catch (Exception ex)

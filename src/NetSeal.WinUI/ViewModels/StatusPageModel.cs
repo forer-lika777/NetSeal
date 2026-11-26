@@ -2,8 +2,8 @@
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using NetSeal.Core.Models;
-using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
+using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Pipe;
 using NetSeal.WinUI.Services;
 using System;
@@ -17,11 +17,11 @@ using System.Threading.Tasks;
 
 namespace NetSeal.WinUI.ViewModels;
 
-public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshingStatusMessage>, IRecipient<ModifyCredentialsMessage>
+public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshingStateMessage>, IRecipient<ModifyCredentialsMessage>
 {
     private readonly INetworkSettings settings;
     private readonly IUiDispatcher dispatcher;
-    private readonly ICoreNetworkManager coreManager;
+    private readonly INetworkStateMonitor coreManager;
     private readonly PipeClient pipeClient;
 
     private DateTime lastHandled = DateTime.MinValue;
@@ -31,12 +31,12 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
     private CancellationTokenSource? connectCts = null;
     private bool initialized = false;
 
-    private CancellationTokenSource? keepRefreshStatusCts = null;
+    private CancellationTokenSource? keepRefreshStateCts = null;
 
     public StatusPageModel(
         INetworkSettings appSettings,
         IUiDispatcher dispatcher,
-        ICoreNetworkManager coreManager,
+        INetworkStateMonitor coreManager,
         PipeClient pipeClient)
     {
         this.settings = appSettings;
@@ -44,14 +44,13 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         this.coreManager = coreManager;
         this.pipeClient = pipeClient;
         _ = InitializeAsync();
-        coreManager.NetworkStatusChanged += CoreManager_NetworkStatusChanged;
-        coreManager.ForceRefreshAsync();
+        coreManager.NetworkStateChanged += CoreManager_NetworkStateChanged;
         coreManager.Register();
-        StrongReferenceMessenger.Default.Register<KeepRefreshingStatusMessage>(this);
+        StrongReferenceMessenger.Default.Register<KeepRefreshingStateMessage>(this);
         StrongReferenceMessenger.Default.Register<ModifyCredentialsMessage>(this);
     }
 
-    private async void CoreManager_NetworkStatusChanged(object? sender, EventArgs e)
+    private async void CoreManager_NetworkStateChanged(object? sender, EventArgs e)
     {
         lock (locker)
         {
@@ -62,22 +61,22 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
             lastHandled = now;
         }
 
-        await UpdateNetworkStatusAsync();
+        await UpdateNetworkStateAsync();
     }
 
-    public void Receive(KeepRefreshingStatusMessage message)
+    public void Receive(KeepRefreshingStateMessage message)
     {
-        if (message.doKeep)
+        if (message.DoKeep)
         {
-            if (keepRefreshStatusCts is not null)
+            if (keepRefreshStateCts is not null)
                 return;
 
-            ResetCts(ref keepRefreshStatusCts);
-            _ = CycleCheckServiceStatusAsync();
+            ResetCts(ref keepRefreshStateCts);
+            _ = CycleCheckServiceStateAsync();
         }
         else
         {
-            CancelCts(ref keepRefreshStatusCts);
+            CancelCts(ref keepRefreshStateCts);
         }
     }
 
@@ -107,7 +106,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
             await UpdateNetworkSettingsAsync();
     }
 
-    private async Task CycleCheckServiceStatusAsync()
+    private async Task CycleCheckServiceStateAsync()
     {
         try
         {
@@ -116,14 +115,14 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
                 using var timeoutCts = new CancellationTokenSource(5000);
                 try
                 {
-                    await CheckServiceStatusAsync(timeoutCts.Token);
+                    await CheckServiceStateAsync(timeoutCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
 
                 }
 
-                await Task.Delay(10000, keepRefreshStatusCts?.Token ?? CancellationToken.None);
+                await Task.Delay(10000, keepRefreshStateCts?.Token ?? CancellationToken.None);
             }
         }
         catch (OperationCanceledException)
@@ -132,9 +131,9 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         }
     }
 
-    private async Task CheckServiceStatusAsync(CancellationToken ct)
+    private async Task CheckServiceStateAsync(CancellationToken ct)
     {
-        var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceStatus }, IpcRequestJsonContext.Default.IpcRequest);
+        var message = JsonSerializer.Serialize(new IpcRequest { Cmd = IpcCommands.CheckServiceState }, IpcRequestJsonContext.Default.IpcRequest);
         try
         {
             await PipeClient.SendCommandAsync(message, ct);
@@ -378,12 +377,12 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
         IsLoading = true;
 
-        await UpdateNetworkStatusAsync();
+        await UpdateNetworkStateAsync();
 
         await dispatcher.InvokeAsync(async () =>
         {
             using var cts = new CancellationTokenSource(2000);
-            await CheckServiceStatusAsync(cts.Token);
+            await CheckServiceStateAsync(cts.Token);
 
             if (ServiceConnected)
             {
@@ -395,7 +394,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
             }
 
             IsLoading = false;
-            _ = CycleCheckServiceStatusAsync();
+            _ = CycleCheckServiceStateAsync();
         });
 
         initialized = true;
@@ -435,10 +434,11 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         }
     }
 
-    private async Task UpdateNetworkStatusAsync()
+    private async Task UpdateNetworkStateAsync()
     {
-        var status = await coreManager.GetNetworkStatusAsync();
-        List<NetworkItem> ethernetNetworks = status.ActiveEthernetNetworks;
+        await coreManager.ForceRefreshAsync();
+        var state = await coreManager.GetNetworkStateAsync();
+        List<NetworkItem> ethernetNetworks = state.ActiveEthernetNetworks;
 
         await dispatcher.InvokeAsync(() =>
         {
@@ -461,18 +461,18 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
             HasAvailableNetworks = Networks.Count > 0;
 
-            IsInternetAccess = status.IsInternetAccess;
-            ActiveNetworkAdapterNames = status.ActiveNetworkAdapterNames;
-            ActiveNetworkNames = status.ActiveNetworkNames;
+            IsInternetAccess = state.IsInternetAccess;
+            ActiveNetworkAdapterNames = state.ActiveNetworkAdapterNames;
+            ActiveNetworkNames = state.ActiveNetworkNames;
 
-            IsEthernetNetworkAdapterConnected = status.IsEthernetConnected;
-            IsOtherNetworkAdapterConnected = !IsEthernetNetworkAdapterConnected && status.NetworkConnectivityLevel != NetworkConnectivityLevel.None;
-            IsNetworkConnectionManagedByOutside = status.IsNetworkConnectionManagedByOutside;
+            IsEthernetNetworkAdapterConnected = state.IsEthernetConnected;
+            IsOtherNetworkAdapterConnected = !IsEthernetNetworkAdapterConnected && state.NetworkConnectivityLevel != NetworkConnectivityLevel.None;
+            IsNetworkConnectionManagedByOutside = state.IsNetworkConnectionManagedByOutside;
 
-            IsPppoeNetworkConnected = status.IsPppoeNetworkConnected;
-            ActivePppoeConnectionEntryName = status.ActivePppoeConnectionEntryName;
-            IsPppoeConnectionManagedByOutside = status.IsPppoeConnectionManagedByOutside;
-            IsNotPppoeNetworkConnection = status.IsNotPppoeNetworkConnection;
+            IsPppoeNetworkConnected = state.IsPppoeNetworkConnected;
+            ActivePppoeConnectionEntryName = state.ActivePppoeConnectionEntryName;
+            IsPppoeConnectionManagedByOutside = state.IsPppoeConnectionManagedByOutside;
+            IsNotPppoeNetworkConnection = state.IsNotPppoeNetworkConnection;
 
             if (!HasAvailableNetworks)
             {

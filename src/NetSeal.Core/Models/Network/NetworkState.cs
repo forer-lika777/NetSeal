@@ -1,6 +1,6 @@
 ﻿namespace NetSeal.Core.Models;
 
-public class NetworkStatus
+public class NetworkState
 {
     public bool IsEthernetConnected { get; set; }
     public bool IsPppoeNetworkConnected { get; set; }

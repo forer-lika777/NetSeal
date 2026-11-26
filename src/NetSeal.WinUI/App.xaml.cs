@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.Windows.Globalization;
 using NetSeal.Core.Models;
-using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Pipe;
@@ -75,7 +74,7 @@ public partial class App : Application
         var systemPath = System.IO.Path.Combine(userFolder, "NetSeal", "network_settings.json");
         services.AddKeyedSingleton<ISettingsStore>("client", new LocalSettingsStore(systemPath));
 
-        services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
+        services.AddSingleton<INetworkStateMonitor, NetworkStateMonitor>();
         services.AddSingleton<PipeClient>();
 
         services.AddSingleton<INetworkService, NetworkService>();
@@ -95,7 +94,7 @@ public partial class App : Application
         else
         {
 #endif
-            services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
+            services.AddSingleton<INetworkStateMonitor, NetworkStateMonitor>();
             services.AddSingleton<IRasDialer, RasDialer>();
 #if DEBUG
         }
@@ -162,7 +161,7 @@ public partial class App : Application
             };
 
             StrongReferenceMessenger.Default.Register<ModifyEnableBackground>(MainPage);
-            StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(true));
+            StrongReferenceMessenger.Default.Send<KeepRefreshingStateMessage>(new KeepRefreshingStateMessage(true));
 
             Window.AppWindow.Closing += CloseWindow;
 
@@ -182,7 +181,7 @@ public partial class App : Application
 
         windowShow = false;
 
-        StrongReferenceMessenger.Default.Send<KeepRefreshingStatusMessage>(new KeepRefreshingStatusMessage(false));
+        StrongReferenceMessenger.Default.Send<KeepRefreshingStateMessage>(new KeepRefreshingStateMessage(false));
         StartDestroyTimer();
     }
 

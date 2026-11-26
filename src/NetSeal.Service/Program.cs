@@ -1,5 +1,4 @@
-﻿using NetSeal.Core.Services;
-using NetSeal.Core.Services.AppSetting;
+﻿using NetSeal.Core.Services.AppSetting;
 using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using NetSeal.Core.Services.SystemPowerRegister;
@@ -54,7 +53,7 @@ if (mock)
 else
 {
 #endif
-    builder.Services.AddSingleton<ICoreNetworkManager, CoreNetworkManager>();
+    builder.Services.AddSingleton<INetworkStateMonitor, NetworkStateMonitor>();
     builder.Services.AddSingleton<IRasDialer, RasDialer>();
 #if DEBUG
 }

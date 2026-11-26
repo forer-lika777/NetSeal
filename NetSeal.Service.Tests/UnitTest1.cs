@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using NetSeal.Core.Models;
-using NetSeal.Core.Services;
 using NetSeal.Core.Services.AppSetting;
+using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System.Reflection;
 
@@ -62,12 +62,12 @@ public class WorkerTests
 
         var mockRasDialer = new Mock<IRasDialer>();
         var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreNetworkManager>();
+        var mockCoreManager = new Mock<INetworkStateMonitor>();
         var serviceState = new ServiceState();
 
         var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
 
-        var status = new NetworkStatus
+        var status = new NetworkState
         {
             IsPppoeNetworkConnected = isPppoeNetworkConnected || isConnect,
             IsEthernetConnected = isEthernetConnected,
@@ -102,7 +102,7 @@ public class WorkerTests
         mockSettings.Setup(s => s.SelectedNetwork.GetValueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(network);
 
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
+        mockCoreManager.Setup(c => c.GetNetworkStateAsync())
             .ReturnsAsync(status);
 
         var cts = new CancellationTokenSource();
@@ -161,7 +161,7 @@ public class WorkerTests
 
         var mockRasDialer = new Mock<IRasDialer>();
         var mockSettings = new Mock<INetworkSettings>();
-        var mockCoreManager = new Mock<ICoreNetworkManager>();
+        var mockCoreManager = new Mock<INetworkStateMonitor>();
         var serviceState = new ServiceState();
 
         var network = new NetworkItem { Id = new Guid("EF528CED-F357-4388-A701-C69C0A20EBE3") };
@@ -174,8 +174,8 @@ public class WorkerTests
         mockSettings.Setup(s => s.SelectedNetwork.GetValueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(network);
 
-        mockCoreManager.Setup(c => c.GetNetworkStatusAsync())
-            .ReturnsAsync(new NetworkStatus
+        mockCoreManager.Setup(c => c.GetNetworkStateAsync())
+            .ReturnsAsync(new NetworkState
             {
                 IsPppoeNetworkConnected = false,
                 IsEthernetConnected = true,

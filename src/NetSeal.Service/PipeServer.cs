@@ -225,7 +225,7 @@ public class PipeServer : BackgroundService
         {
             switch (request.Cmd)
             {
-                case IpcCommands.CheckServiceStatus:
+                case IpcCommands.CheckServiceState:
                     logger.LogDebug("已接收到客户端心跳请求。");
                     return IpcResponse.SerializeOk();
 

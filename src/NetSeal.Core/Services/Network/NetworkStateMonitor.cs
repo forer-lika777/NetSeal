@@ -1,40 +1,37 @@
 ﻿using Microsoft.Extensions.Logging;
 using NetSeal.Core.Models;
-using NetSeal.Core.Services.Network;
 using NetSeal.Core.Services.Ras;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 
-namespace NetSeal.Core.Services;
+namespace NetSeal.Core.Services.Network;
 
-public class CoreNetworkManager : ICoreNetworkManager
+public class NetworkStateMonitor : INetworkStateMonitor
 {
-    private readonly ILogger<ICoreNetworkManager> logger;
+    private readonly ILogger<INetworkStateMonitor> logger;
     private readonly INetworkService networkService;
     private readonly INetworkAdapterService adapterService;
     private readonly IRasDialer rasDialer;
 
-    private readonly NetworkStatus cachedStatus = new(); // 初始状态
-    private readonly SemaphoreSlim statusLock = new(2, 2);
+    private readonly NetworkState cachedState = new(); // 初始状态
+    private readonly SemaphoreSlim stateLock = new(2, 2);
     private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
     private DateTime lastUpdateTime = DateTime.MinValue;
-    private readonly Lock locker = new();
 
     private bool registered = false;
 
-    public event EventHandler? NetworkStatusChanged;
+    public event EventHandler? NetworkStateChanged;
 
-    public CoreNetworkManager(
+    public NetworkStateMonitor(
         INetworkService networkService,
         INetworkAdapterService adapterService,
         IRasDialer rasDialer,
-        ILogger<ICoreNetworkManager> logger)
+        ILogger<INetworkStateMonitor> logger)
     {
         this.networkService = networkService;
         this.adapterService = adapterService;
         this.rasDialer = rasDialer;
         this.logger = logger;
-        _ = ForceRefreshAsync();
     }
 
     private CancellationTokenSource? debounceCts = null;
@@ -45,7 +42,7 @@ public class CoreNetworkManager : ICoreNetworkManager
         {
             logger.LogDebug("收到网络环境变更事件。");
 
-            await statusLock.WaitAsync();
+            await stateLock.WaitAsync();
 
             try
             {
@@ -71,14 +68,14 @@ public class CoreNetworkManager : ICoreNetworkManager
 
                 logger.LogInformation("收到网络变更事件。正在更新网络状态...");
 
-                await UpdateNetworkConnectionStatusAsync(cachedStatus);
-                await UpdatePppoeConnectionStatusAsync(cachedStatus);
+                await UpdateNetworkConnectionStateAsync(cachedState);
+                await UpdatePppoeConnectionStateAsync(cachedState);
 
-                NetworkStatusChanged?.Invoke(sender, EventArgs.Empty);
+                NetworkStateChanged?.Invoke(sender, EventArgs.Empty);
             }
             finally
             {
-                statusLock.Release();
+                stateLock.Release();
             }
         }
         catch (Exception ex)
@@ -88,36 +85,36 @@ public class CoreNetworkManager : ICoreNetworkManager
     }
 
     /// <summary>
-    /// 强制更新网络状态。此函数入口在更新后不会触发 <see cref="NetworkStatusChanged"/> 事件通知。
+    /// 强制更新网络状态。此函数入口在更新后不会触发 <see cref="NetworkStateChanged"/> 事件通知。
     /// </summary>
     /// <returns></returns>
     public async Task ForceRefreshAsync()
     {
-        await statusLock.WaitAsync();
+        await stateLock.WaitAsync();
 
         try
         {
             logger.LogInformation("正在更新网络状态（外部强制更新）...");
-            await UpdateNetworkConnectionStatusAsync(cachedStatus);
-            await UpdatePppoeConnectionStatusAsync(cachedStatus);
+            await UpdateNetworkConnectionStateAsync(cachedState);
+            await UpdatePppoeConnectionStateAsync(cachedState);
         }
         finally
         {
-            statusLock.Release();
+            stateLock.Release();
         }
     }
 
-    public async Task<NetworkStatus> GetNetworkStatusAsync()
+    public async Task<NetworkState> GetNetworkStateAsync()
     {
-        await statusLock.WaitAsync();
+        await stateLock.WaitAsync();
 
         try
         {
-            return cachedStatus;
+            return cachedState;
         }
         finally
         {
-            statusLock.Release();
+            stateLock.Release();
         }
     }
 
@@ -140,55 +137,55 @@ public class CoreNetworkManager : ICoreNetworkManager
         }
     }
 
-    private async Task UpdateNetworkConnectionStatusAsync(NetworkStatus status)
+    private async Task UpdateNetworkConnectionStateAsync(NetworkState state)
     {
-        status.IsEthernetConnected = networkService.IsEthernetConnected;
+        state.IsEthernetConnected = networkService.IsEthernetConnected;
 
-        status.ActiveEthernetNetworks = await networkService.GetAllActiveEthernetAdapterNetworksAsync();
-        status.ActiveNetworkAdapterNames = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
-        status.ActiveNetworkNames = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
+        state.ActiveEthernetNetworks = await networkService.GetAllActiveEthernetAdapterNetworksAsync();
+        state.ActiveNetworkAdapterNames = string.Join(",", await networkService.GetActiveNetworkAdapterNamesAsync());
+        state.ActiveNetworkNames = string.Join(",", await networkService.GetActiveNetworkNamesAsync());
 
         var level = await networkService.GetConnectivityLevelAsync();
 
-        status.IsInternetAccess = level == NetworkConnectivityLevel.InternetAccess;
-        status.NetworkConnectivityLevel = level;
+        state.IsInternetAccess = level == NetworkConnectivityLevel.InternetAccess;
+        state.NetworkConnectivityLevel = level;
     }
 
-    private async Task UpdatePppoeConnectionStatusAsync(NetworkStatus status)
+    private async Task UpdatePppoeConnectionStateAsync(NetworkState state)
     {
         var connection = await rasDialer.GetActiveRasConnectionAsync();
         if (connection is not null)
         {
-            status.IsPppoeNetworkConnected = true;
+            state.IsPppoeNetworkConnected = true;
 
-            status.ActivePppoeConnectionEntryName = connection.EntryName;
+            state.ActivePppoeConnectionEntryName = connection.EntryName;
 
             if (connection.EntryName == RasEntryName.NetSealServiceEntryName)
             {
-                status.IsPppoeConnectionManagedByOutside = false;
-                status.IsNetworkConnectionManagedByOutside = false;
+                state.IsPppoeConnectionManagedByOutside = false;
+                state.IsNetworkConnectionManagedByOutside = false;
             }
             else
             {
-                status.IsNetworkConnectionManagedByOutside = true;
-                status.IsPppoeConnectionManagedByOutside = true;
+                state.IsNetworkConnectionManagedByOutside = true;
+                state.IsPppoeConnectionManagedByOutside = true;
             }
         }
         else
         {
-            status.IsPppoeNetworkConnected = false;
-            status.IsPppoeConnectionManagedByOutside = false;
-            status.ActivePppoeConnectionEntryName = "";
+            state.IsPppoeNetworkConnected = false;
+            state.IsPppoeConnectionManagedByOutside = false;
+            state.ActivePppoeConnectionEntryName = "";
 
             if (await networkService.GetConnectivityLevelAsync() == NetworkConnectivityLevel.InternetAccess)
             {
-                status.IsNetworkConnectionManagedByOutside = true;
-                status.IsNotPppoeNetworkConnection = true;
+                state.IsNetworkConnectionManagedByOutside = true;
+                state.IsNotPppoeNetworkConnection = true;
             }
             else
             {
-                status.IsNetworkConnectionManagedByOutside = false;
-                status.IsNotPppoeNetworkConnection = false;
+                state.IsNetworkConnectionManagedByOutside = false;
+                state.IsNotPppoeNetworkConnection = false;
             }
         }
     }
@@ -198,12 +195,5 @@ public class CoreNetworkManager : ICoreNetworkManager
         cts?.Cancel();
         cts?.Dispose();
         cts = ctsToUse ?? new CancellationTokenSource();
-    }
-
-    private static void CancelCts(ref CancellationTokenSource? cts)
-    {
-        cts?.Cancel();
-        cts?.Dispose();
-        cts = null;
     }
 }

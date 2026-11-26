@@ -2,7 +2,7 @@
 
 public static class IpcCommands
 {
-    public const string CheckServiceStatus = "CHECK_STATUS";
+    public const string CheckServiceState = "CHECK_STATUS";
     public const string GetAppSettingsKeyValue = "GET";
     public const string SetAppSettingsKeyValue = "SET";
     public const string RasConnect = "RAS_CONNECT";
