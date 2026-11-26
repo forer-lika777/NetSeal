@@ -9,16 +9,18 @@
 	<CsWin32RunAsBuildTask>true</CsWin32RunAsBuildTask>
 	<CsWin32PlatformTarget>x64</CsWin32PlatformTarget>
 	<DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
-	  
+	
+	<PublishTrimmed>true</PublishTrimmed>
 	<PublishAot>true</PublishAot>
 	<IsAotCompatible>true</IsAotCompatible>
 	<VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
 	<IsTrimmable>true</IsTrimmable>
 	<EnableAotAnalyzer>true</EnableAotAnalyzer>
-	<PublishTrimmed>true</PublishTrimmed>
-	  <Platforms>x64</Platforms>
-	  <PlatformTarget>x64</PlatformTarget>
-	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+	  
+	<Platforms>x64</Platforms>
+	<PlatformTarget>x64</PlatformTarget>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
