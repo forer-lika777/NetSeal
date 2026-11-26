@@ -381,7 +381,7 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
         await dispatcher.InvokeAsync(async () =>
         {
-            var cts = new CancellationTokenSource(2000);
+            using var cts = new CancellationTokenSource(2000);
             await CheckServiceStatusAsync(cts.Token);
 
             if (ServiceConnected)
