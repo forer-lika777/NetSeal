@@ -52,7 +52,7 @@ jobs:
     - name: Install Inno Setup
       run: choco install innosetup -y
 
-    - name: Install Chinese Language Pack
+    - name: Install Inno Setup Chinese Language Pack
       shell: pwsh
       run: |
         $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
