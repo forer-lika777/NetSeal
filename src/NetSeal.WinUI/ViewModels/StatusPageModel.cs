@@ -550,8 +550,6 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
         IsConnecting = true;
         IsConnectingOrDisconnecting = true;
 
-        ResetCts(ref connectCts);
-
         try
         {
             await ExcuteConnectAsync();
@@ -643,6 +641,8 @@ public partial class StatusPageModel : ObservableObject, IRecipient<KeepRefreshi
 
     private async Task ExcuteConnectAsync()
     {
+        ResetCts(ref connectCts);
+
         string request = JsonSerializer.Serialize(new IpcRequest() { Cmd = IpcCommands.RasConnect }, IpcRequestJsonContext.Default.IpcRequest);
         string raw = await PipeClient.SendCommandAsync(request, connectCts!.Token);
 
