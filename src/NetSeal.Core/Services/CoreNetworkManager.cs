@@ -120,6 +120,7 @@ public class CoreNetworkManager : ICoreNetworkManager
     {
         if (!registered)
         {
+            logger.LogInformation("已注册网络变更事件。");
             NetworkChange.NetworkAddressChanged += NetworkChange_NetworkAddressChanged;
             registered = true;
         }
@@ -128,6 +129,7 @@ public class CoreNetworkManager : ICoreNetworkManager
     {
         if (registered)
         {
+            logger.LogInformation("已取消注册网络变更事件。");
             NetworkChange.NetworkAddressChanged -= NetworkChange_NetworkAddressChanged;
             registered = false;
         }

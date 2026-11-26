@@ -309,7 +309,7 @@ public class Worker : BackgroundService
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "更新网络状态时出现错误。");
+            logger.LogError(ex, "更新电源状态时出现错误。");
         }
     }
 
@@ -342,6 +342,8 @@ public class Worker : BackgroundService
                 {
                     if (logger.IsEnabled(LogLevel.Information))
                         logger.LogInformation("连接失败。当前已达最大重试限制次数：{Count}。", connectRetryCount);
+
+                    hasTriedDetectedConnect = false;
 
                     pollInterval = TimeSpan.FromMilliseconds(-1);
                 }
