@@ -15,7 +15,7 @@ public class CoreNetworkManager : ICoreNetworkManager
     private readonly IRasDialer rasDialer;
 
     private readonly NetworkStatus cachedStatus = new(); // 初始状态
-    private readonly SemaphoreSlim statusLock = new(1, 1);
+    private readonly SemaphoreSlim statusLock = new(2, 2);
     private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
     private DateTime lastUpdateTime = DateTime.MinValue;
     private readonly Lock locker = new();
@@ -37,38 +37,43 @@ public class CoreNetworkManager : ICoreNetworkManager
         _ = ForceRefreshAsync();
     }
 
+    private CancellationTokenSource? debounceCts = null;
+
     private async void NetworkChange_NetworkAddressChanged(object? sender, EventArgs e)
     {
         try
         {
             logger.LogDebug("收到网络环境变更事件。");
-            lock (locker)
+
+            await statusLock.WaitAsync();
+
+            try
             {
                 var now = DateTime.UtcNow;
-                try
+                var gap = now - lastUpdateTime;
+                lastUpdateTime = now;
+
+                if (gap < cooldown)
                 {
-                    if (now - lastUpdateTime < cooldown)
+                    lastUpdateTime = now;
+                    ResetCts(ref debounceCts);
+
+                    try
+                    {
+                        await Task.Delay(cooldown, debounceCts!.Token);
+                    }
+                    catch (OperationCanceledException)
                     {
                         logger.LogDebug("距离上次检查仍在冷却时间内。此线程已退出。");
                         return;
                     }
                 }
-                finally
-                {
-                    lastUpdateTime = now;
-                }
-            }
 
-            if (!await statusLock.WaitAsync(TimeSpan.FromSeconds(3)))
-            {
-                return;
-            }
+                logger.LogInformation("收到网络变更事件。正在更新网络状态...");
 
-            try
-            {
-                logger.LogInformation("正在更新网络状态...");
                 await UpdateNetworkConnectionStatusAsync(cachedStatus);
                 await UpdatePppoeConnectionStatusAsync(cachedStatus);
+
                 NetworkStatusChanged?.Invoke(sender, EventArgs.Empty);
             }
             finally
@@ -186,5 +191,19 @@ public class CoreNetworkManager : ICoreNetworkManager
                 status.IsNotPppoeNetworkConnection = false;
             }
         }
+    }
+
+    private static void ResetCts(ref CancellationTokenSource? cts, CancellationTokenSource? ctsToUse = null)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = ctsToUse ?? new CancellationTokenSource();
+    }
+
+    private static void CancelCts(ref CancellationTokenSource? cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
     }
 }

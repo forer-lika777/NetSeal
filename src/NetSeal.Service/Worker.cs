@@ -88,7 +88,6 @@ public class Worker : BackgroundService
         if (isSleeping)
             return;
 
-        logger.LogInformation("检测到网络环境变更。");
         serviceState.TriggerReload();
     }
 
@@ -486,6 +485,7 @@ public class Worker : BackgroundService
     {
         try
         {
+            logger.LogInformation("正在检查网络状态...");
             var status = await coreManager.GetNetworkStatusAsync();
             lock (lockObject)
             {
