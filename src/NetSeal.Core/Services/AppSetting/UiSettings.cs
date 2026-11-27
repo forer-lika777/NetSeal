@@ -7,5 +7,5 @@ public class UiSettings([FromKeyedServices("client")] ISettingsStore settingsSto
 {
     public IKeyItem<LightDarkModes> LightDarkMods { get; } = new KeyItem<LightDarkModes>(settingsStore, nameof(LightDarkMods), LightDarkModes.FollowSystem, LightDarkModesJsonContext.Default);
 
-    public IKeyItem<bool> EnableBackground { get; } = new KeyItem<bool>(settingsStore, nameof(EnableBackground), true);
+    public IKeyItem<bool> EnableBackground { get; } = new KeyItem<bool>(settingsStore, nameof(EnableBackground), false);
 }
