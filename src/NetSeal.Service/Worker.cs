@@ -301,6 +301,7 @@ public class Worker : BackgroundService
 
                 isSleeping = false;
                 resumedFromSleep = true;
+                hasTriedDetectedConnect = false;
                 await coreManager.ForceRefreshAsync();
                 coreManager.Register();
                 serviceState.TriggerReload();
