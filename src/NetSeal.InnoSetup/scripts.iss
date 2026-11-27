@@ -41,7 +41,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; WinUI 主 exe
 Source: "{#PublishDir}WinUI\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; WinUI 其余文件
-Source: "{#PublishDir}WinUI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Microsoft.Windows.AI.*.dll,Microsoft.Web.WebView2.*.dll,Microsoft.ML.OnnxRuntime.dll"
+Source: "{#PublishDir}WinUI\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,Microsoft.Windows.AI.*.dll,Microsoft.Web.WebView2.*.dll,Microsoft.Web.WebView2.*.xml,onnxruntime.dll,WebView2Loader.dll,Microsoft.ML.OnnxRuntime.dll,DirectML.dll"
 ; Service（AOT 产物）
 Source: "{#PublishDir}Service\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb"
 
