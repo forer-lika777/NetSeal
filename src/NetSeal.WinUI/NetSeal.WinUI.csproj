@@ -7,6 +7,13 @@
 	<OutputPath>bin\$(Configuration)\</OutputPath>
 	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 	<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+	<PublishTrimmed>true</PublishTrimmed>
+	<PublishAot>true</PublishAot>
+	<IsAotCompatible>true</IsAotCompatible>
+	<VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
+	<IsTrimmable>true</IsTrimmable>
+	<EnableAotAnalyzer>true</EnableAotAnalyzer>
 	
     <RootNamespace>NetSeal.WinUI</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
