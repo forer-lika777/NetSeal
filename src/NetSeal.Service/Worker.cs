@@ -107,6 +107,7 @@ public class Worker : BackgroundService
         await rasDialer.RasCreateEntryAsync(phoneBookPath, RasEntryName.NetSealServiceEntryName, "", "").ConfigureAwait(false);
 
         coreManager.Register();
+        await coreManager.ForceRefreshAsync();
 
         while (!stoppingToken.IsCancellationRequested)
         {
