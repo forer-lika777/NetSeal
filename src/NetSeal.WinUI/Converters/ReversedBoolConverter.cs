@@ -3,7 +3,7 @@ using System;
 
 namespace NetSeal.WinUI.Converters;
 
-public class ReversedBoolConverter : IValueConverter
+public partial class ReversedBoolConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
