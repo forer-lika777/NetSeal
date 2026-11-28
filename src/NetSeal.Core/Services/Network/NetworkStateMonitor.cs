@@ -14,8 +14,8 @@ public class NetworkStateMonitor : INetworkStateMonitor
     private readonly IRasDialer rasDialer;
 
     private readonly NetworkState cachedState = new(); // 初始状态
-    private readonly SemaphoreSlim stateLock = new(2, 2);
-    private readonly TimeSpan cooldown = TimeSpan.FromSeconds(2);
+    private readonly SemaphoreSlim stateLock = new(1, 1);
+    private readonly TimeSpan cooldown = TimeSpan.FromSeconds(3);
     private DateTime lastUpdateTime = DateTime.MinValue;
 
     private bool registered = false;
@@ -42,18 +42,18 @@ public class NetworkStateMonitor : INetworkStateMonitor
         {
             logger.LogDebug("收到网络环境变更事件。");
 
+            ResetCts(ref debounceCts);
+
+            var now = DateTime.UtcNow;
+            var gap = now - lastUpdateTime;
+            lastUpdateTime = now;
+
             await stateLock.WaitAsync();
 
             try
             {
-                var now = DateTime.UtcNow;
-                var gap = now - lastUpdateTime;
-                lastUpdateTime = now;
-
                 if (gap < cooldown)
                 {
-                    lastUpdateTime = now;
-                    ResetCts(ref debounceCts);
 
                     try
                     {
