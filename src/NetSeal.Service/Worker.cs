@@ -202,6 +202,7 @@ public class Worker : BackgroundService
             if (connectRequested)
             {
                 connectRequested = false;
+                logger.LogWarning("用户正在请求连接。");
                 return true;
             }
 
@@ -269,6 +270,7 @@ public class Worker : BackgroundService
             if (!hasTriedDetectedConnect)
             {
                 logger.LogInformation("尝试探测性连接（这是为了避免可能存在的网络识别过程中产生的延迟）...");
+                hasTriedDetectedConnect = true;
                 return true;
             }
 
@@ -319,7 +321,6 @@ public class Worker : BackgroundService
         if (!success)
         {
             lastConnectionSucceeded = false;
-            hasTriedDetectedConnect = true;
 
             if (ex != null)
                 logger.LogError(ex, "拨号连接失败：{Message}", ex?.Message);
